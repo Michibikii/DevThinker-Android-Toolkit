@@ -1,12 +1,12 @@
 import customtkinter as ctk
-import shlex
-import utils
 from utils import run_async
+from services import TerminalService
 
 class FrameTerminal(ctk.CTkFrame):
     def __init__(self, parent, app):
         super().__init__(parent, fg_color="transparent")
         self.app = app
+        self.service = TerminalService()
         
         ctk.CTkLabel(self, text="Terminal ADB", font=("Segoe UI", 24, "bold"), text_color="#F8FAFC").pack(anchor="w", pady=(0, 5))
         ctk.CTkLabel(self, text="Ejecuta comandos directamente en el dispositivo. No necesitas escribir 'adb', solo el comando (ej. shell ls).", font=("Segoe UI", 13), text_color="#94A3B8").pack(anchor="w", pady=(0, 15))
@@ -54,36 +54,24 @@ class FrameTerminal(ctk.CTkFrame):
             return
             
         self.entry_cmd.delete(0, "end")
-        
-        if raw_cmd.startswith("adb "):
-            raw_cmd = raw_cmd[4:]
-            
-        self.append_output(f"\n> adb {raw_cmd}", "cmd")
-        
-        if not self.app.current_device_id and raw_cmd not in ["devices", "start-server", "kill-server", "version", "help"]:
-            self.append_output("Error: Ningún dispositivo conectado o autorizado.", "err")
-            return
 
-        try:
-            cmd_args = shlex.split(raw_cmd)
-        except Exception as e:
-            self.append_output(f"Error de sintaxis en el comando: {e}", "err")
-            return
+        normalized_cmd = self.service.normalize_command(raw_cmd)
+        self.append_output(f"\n> adb {normalized_cmd}", "cmd")
 
         self.entry_cmd.configure(state="disabled")
         
         def task():
-            if raw_cmd in ["devices", "start-server", "kill-server", "version", "help"]:
-                return utils.run_adb(cmd_args, timeout=None)
-            else:
-                return self.app.adb_cmd(cmd_args, timeout=None)
+            return self.service.execute(raw_cmd, self.app.current_device_id)
             
         def on_done(res):
-            if res is not None:
-                if res.strip() == "":
+            if res and res.get("error"):
+                self.append_output(res["error"], "err")
+            elif res and res.get("output") is not None:
+                output = res["output"]
+                if output.strip() == "":
                     self.append_output("[Comando ejecutado sin salida en consola]", "sys")
                 else:
-                    self.append_output(res)
+                    self.append_output(output)
             else:
                 self.append_output("Error interno: Falló la ejecución del comando o excedió el tiempo límite.", "err")
                 

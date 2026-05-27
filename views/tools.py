@@ -1,16 +1,18 @@
 import customtkinter as ctk
-import subprocess
 import shutil
 import os
-from datetime import datetime
 from tkinter import filedialog
 import utils
-from utils import run_adb, ToolTip, requires_device, run_async
+from utils import ToolTip, requires_device, run_async
+from services import ToolsService
 
 class FrameTools(ctk.CTkFrame):
     def __init__(self, parent, app):
         super().__init__(parent, fg_color="transparent")
         self.app = app
+        self.feature_cards = []
+        self.service = ToolsService()
+        self._adb_card_refresh_token = 0
         
         ctk.CTkLabel(self, text="Utilidades", font=("Segoe UI", 24, "bold"), text_color="#F8FAFC").pack(anchor="w", pady=(0, 5))
         ctk.CTkLabel(self, text="Herramientas rápidas y gestión del motor interno.", font=("Segoe UI", 13), text_color="#94A3B8").pack(anchor="w", pady=(0, 15))
@@ -35,17 +37,44 @@ class FrameTools(ctk.CTkFrame):
     def add(self, t, s, cmd, r, c, tip):
         f = ctk.CTkFrame(self.grid_container, fg_color="#181D2B", corner_radius=12, border_width=1, border_color="#252D40")
         f.grid(row=r, column=c, padx=10, pady=10, sticky="ew")
-        f.bind("<Button-1>", lambda e: cmd())
+        needs_device = True
+
+        def trigger(_event=None):
+            self._run_action(cmd, needs_device)
+
+        f.bind("<Button-1>", trigger)
         l1 = ctk.CTkLabel(f, text=t, font=("Segoe UI", 15, "bold"), text_color="#F8FAFC")
         l1.pack(anchor="w", padx=20, pady=(20,5))
-        l1.bind("<Button-1>", lambda e: cmd())
+        l1.bind("<Button-1>", trigger)
         l2 = ctk.CTkLabel(f, text=s, font=("Segoe UI", 12), text_color="#94A3B8")
         l2.pack(anchor="w", padx=20, pady=(0,15))
-        l2.bind("<Button-1>", lambda e: cmd())
-        btn = ctk.CTkButton(f, text="Ejecutar", height=38, font=("Segoe UI", 13, "bold"), fg_color="#38BDF8", hover_color="#0284C7", command=cmd)
+        l2.bind("<Button-1>", trigger)
+        btn = ctk.CTkButton(f, text="Ejecutar", height=38, font=("Segoe UI", 13, "bold"), fg_color="#38BDF8", hover_color="#0284C7", command=trigger)
         btn.pack(fill="x", padx=20, pady=(0,20))
         ToolTip(btn, tip)
         ToolTip(f, tip)
+        self.feature_cards.append((f, l1, l2, btn, needs_device))
+        self.refresh_feature_states()
+
+    def _run_action(self, cmd, needs_device):
+        if needs_device and not self.app.current_device_id:
+            return
+        cmd()
+
+    def refresh_feature_states(self):
+        device_ready = bool(self.app.current_device_id)
+        for frame, label_title, label_subtitle, button, needs_device in self.feature_cards:
+            enabled = device_ready or not needs_device
+            if enabled:
+                frame.configure(fg_color="#181D2B", border_color="#252D40")
+                label_title.configure(text_color="#F8FAFC")
+                label_subtitle.configure(text_color="#94A3B8")
+                button.configure(state="normal", fg_color="#38BDF8", hover_color="#0284C7", text_color_disabled="#0B0F19")
+            else:
+                frame.configure(fg_color="#111827", border_color="#1F2937")
+                label_title.configure(text_color="#64748B")
+                label_subtitle.configure(text_color="#475569")
+                button.configure(state="disabled", fg_color="#1E293B", hover_color="#1E293B", text_color_disabled="#64748B")
 
     def create_adb_card(self, r, c):
         self.adb_card = ctk.CTkFrame(self.grid_container, fg_color="#0B0F19", corner_radius=12, border_width=1, border_color="#38BDF8")
@@ -60,6 +89,9 @@ class FrameTools(ctk.CTkFrame):
         self.refresh_adb_card_ui()
 
     def refresh_adb_card_ui(self):
+        self._adb_card_refresh_token += 1
+        refresh_token = self._adb_card_refresh_token
+
         for w in self.adb_btn_frame.winfo_children():
             w.destroy()
         
@@ -84,9 +116,12 @@ class FrameTools(ctk.CTkFrame):
             self.btn_upd = ctk.CTkButton(self.adb_btn_frame, text="Buscando actualizaciones...", height=40, font=("Segoe UI", 13, "bold"), state="disabled", fg_color="#1E293B", text_color_disabled="#64748B")
             self.btn_upd.pack(side="left", fill="x", expand=True)
             
-            utils.run_async(utils.check_adb_update, self._update_btn_state, self.app)
+            utils.run_async(utils.check_adb_update, lambda res: self._update_btn_state(res, refresh_token), self.app)
 
-    def _update_btn_state(self, res):
+    def _update_btn_state(self, res, refresh_token):
+        if refresh_token != self._adb_card_refresh_token:
+            return
+
         has_update, new_ver = res
         if has_update:
             self.btn_upd.configure(text="Actualización Disponible", fg_color="#38BDF8", hover_color="#0284C7", state="normal", text_color="#0B0F19", command=self.prompt_install)
@@ -99,15 +134,16 @@ class FrameTools(ctk.CTkFrame):
     def kill_adb(self): 
         self.app.show_toast("Reiniciando ADB en segundo plano...", color="#8B5CF6")
         def task():
-            run_adb(["kill-server"])
-            run_adb(["start-server"])
+            return self.service.restart_adb()
         run_async(task, lambda res: self.app.show_toast("ADB Reiniciado con éxito", color="#10B981"), self.app)
 
     def uninstall_adb(self):
         if utils.AskYesNo(self.app, "Confirmar", "¿Eliminar ADB del sistema? El programa dejará de funcionar hasta que lo reinstales.").get():
-            utils.uninstall_adb()
+            self.service.uninstall_adb()
+            utils.refresh_adb_path()
             self.app.show_toast("ADB Desinstalado exitosamente", "#EF4444")
             self.refresh_adb_card_ui()
+            self.app.frames["tools"].refresh_feature_states()
 
     def prompt_install(self):
         self.install_win = ctk.CTkToplevel(self)
@@ -142,14 +178,16 @@ class FrameTools(ctk.CTkFrame):
             self.app.after(0, lambda: self._update_progress_ui(dl, total, speed, state_msg))
             
         def task():
-            return utils.download_and_install_adb(path, progress)
+            return self.service.download_and_install_adb(path, progress)
             
         def on_done(success):
             self.install_win.destroy()
             if success:
+                utils.refresh_adb_path()
                 self.app.show_toast("¡ADB Instalado Correctamente!", color="#10B981")
                 run_adb(["start-server"])
                 self.refresh_adb_card_ui()
+                self.app.frames["tools"].refresh_feature_states()
             else:
                 self.app.show_toast("Error en la instalación de red", color="#EF4444")
                 
@@ -165,28 +203,28 @@ class FrameTools(ctk.CTkFrame):
 
     @requires_device
     def screenshot(self): 
+        from datetime import datetime
+
         t = datetime.now().strftime("%H%M%S")
-        self.app.adb_cmd(["shell", "screencap", "-p", "/sdcard/s.png"])
-        self.app.adb_cmd(["pull", "/sdcard/s.png", f"shot_{t}.png"])
+        self.service.screenshot(self.app.current_device_id)
+        self.service.pull_screenshot(self.app.current_device_id, f"shot_{t}.png")
         self.app.show_toast("Captura Guardada exitosamente", color="#38BDF8")
 
     @requires_device
     def reboot(self): 
         if utils.AskYesNo(self.app, "Reiniciar", "¿Seguro que quieres reiniciar el teléfono?").get():
-            self.app.adb_cmd(["reboot"])
+            self.service.reboot(self.app.current_device_id)
 
     @requires_device
     def input_text(self): 
         txt = utils.AskString(self.app, "Ingresar", "Texto:").get()
         if txt: 
-            safe_txt = txt.replace(" ", "%s").replace('"', '\\"') 
-            self.app.adb_cmd(["shell", "input", "text", f'"{safe_txt}"'])
+            self.service.input_text(self.app.current_device_id, txt)
             self.app.show_toast("Texto inyectado", color="#38BDF8")
 
     @requires_device
     def toggle_taps(self):
-        v = "0" if "1" in self.app.adb_cmd(["shell", "settings", "get", "system", "show_touches"]) else "1"
-        self.app.adb_cmd(["shell", "settings", "put", "system", "show_touches", v])
+        v, _ = self.service.toggle_show_touches(self.app.current_device_id)
         self.app.show_toast(f"Toques en pantalla: {'Activados' if v=='1' else 'Desactivados'}", color="#10B981" if v=='1' else "#EF4444")
 
     @requires_device
@@ -222,17 +260,18 @@ class FrameTools(ctk.CTkFrame):
         chk_fps.pack(anchor="w", padx=20, pady=(10, 20))
 
         def launch():
-            cmd = ["scrcpy", "-s", self.app.current_device_id]
-            if chk_off.get():
-                cmd.append("--turn-screen-off")
-            if chk_awake.get():
-                cmd.append("--stay-awake")
-            if chk_audio.get():
-                cmd.append("--no-audio")
-            if chk_fps.get():
-                cmd.extend(["--max-fps", "30"])
-
-            subprocess.Popen(cmd, shell=True)
+            cmd = self.service.build_scrcpy_command(
+                self.app.current_device_id,
+                turn_screen_off=bool(chk_off.get()),
+                stay_awake=bool(chk_awake.get()),
+                no_audio=bool(chk_audio.get()),
+                max_fps=bool(chk_fps.get()),
+            )
+            if self.service.launch_scrcpy(cmd) is None:
+                try:
+                    self.app.show_toast("Error al iniciar scrcpy", color="#EF4444")
+                except:
+                    pass
             win.destroy()
 
         ctk.CTkButton(win, text="▶ Iniciar Transmisión", font=("Segoe UI", 14, "bold"), height=45, fg_color="#10B981", hover_color="#059669", command=launch).pack(fill="x", padx=20, pady=20)
@@ -241,9 +280,7 @@ class FrameTools(ctk.CTkFrame):
     def open_url(self):
         url = utils.AskString(self.app, "Abrir Enlace", "URL (ej. google.com):").get()
         if url:
-            if not url.startswith("http"):
-                url = "https://" + url
-            self.app.adb_cmd(["shell", "am", "start", "-a", "android.intent.action.VIEW", "-d", f'"{url}"'])
+            self.service.open_url(self.app.current_device_id, url)
             self.app.show_toast("Abriendo enlace...", color="#38BDF8")
 
     @requires_device

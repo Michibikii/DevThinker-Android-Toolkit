@@ -21,7 +21,18 @@ DevThinker es una herramienta integral diseñada para desarrolladores, técnicos
 Asegúrate de tener **Python 3.8 o superior** instalado en tu sistema.
 
 🛠️ Tecnologías Utilizadas
-Python 3, CustomTkinter (Interfaz Gráfica), Pillow (Procesamiento de imágenes), ADB (Android Debug Bridge)
+Python 3, CustomTkinter (Interfaz Gráfica), ADB (Android Debug Bridge)
+
+Nota: La vista previa de imágenes sigue desactivada en el explorador de archivos, pero el emparejamiento por QR vuelve a usar la librería Pillow para mostrar la imagen del código QR dentro de la app.
+
+Instalación mínima de dependencias (entorno virtual):
+
+```powershell
+& ".\.venv\Scripts\Activate.ps1"
+pip install customtkinter pillow
+```
+
+Si tu entorno no usa PowerShell, activa el venv según tu shell y ejecuta `pip install customtkinter pillow`.
 
 📝 Notas Adicionales
 Para utilizar las funciones inalámbricas de forma fluida, se recomienda pausar momentáneamente cualquier VPN o bloqueador de anuncios activo (como Blokada o AdGuard) en el dispositivo móvil durante la vinculación.

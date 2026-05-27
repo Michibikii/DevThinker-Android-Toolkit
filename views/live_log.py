@@ -1,8 +1,8 @@
 import customtkinter as ctk
 import threading
-import subprocess
 import utils 
 from utils import ToolTip
+from services import LiveLogService
 
 class FrameLiveLog(ctk.CTkFrame):
     def __init__(self, parent, app):
@@ -10,6 +10,7 @@ class FrameLiveLog(ctk.CTkFrame):
         self.app = app
         self.process = None
         self.is_running = False
+        self.service = LiveLogService()
 
         ctk.CTkLabel(self, text="Logcat en Vivo", font=("Segoe UI", 24, "bold"), text_color="#F8FAFC").pack(anchor="w", pady=(0, 5))
         ctk.CTkLabel(self, text="Ve todo lo que pasa en tu teléfono en tiempo real.", font=("Segoe UI", 13), text_color="#94A3B8").pack(anchor="w", pady=(0, 15))
@@ -54,6 +55,10 @@ class FrameLiveLog(ctk.CTkFrame):
         if not self.app.current_device_id: 
             self.app.show_toast("Sin Dispositivo Conectado", color="#EF4444")
             return
+
+        if not self.service.adb_ready():
+            self.app.show_toast("No se encontró ADB en el sistema", color="#EF4444")
+            return
             
         self.is_running = True
         self.btn_toggle.configure(text="⏹ Detener", fg_color="#EF4444", hover_color="#DC2626")
@@ -62,7 +67,7 @@ class FrameLiveLog(ctk.CTkFrame):
         self.txt_log.delete("1.0", "end")
         self.txt_log.configure(state="disabled")
         
-        cmd = [utils.ADB_PATH, "-s", self.app.current_device_id, "logcat", "-v", "time"]
+        cmd = self.service.build_logcat_command(self.app.current_device_id)
         threading.Thread(target=self.run, args=(cmd,), daemon=True).start()
 
     def stop(self):
@@ -78,25 +83,22 @@ class FrameLiveLog(ctk.CTkFrame):
             pass
 
     def run(self, cmd):
-        si = subprocess.STARTUPINFO()
-        si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         try:
-            self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, text=True, startupinfo=si, encoding='utf-8', errors='replace')
+            self.process = self.service.start_logcat_process(cmd)
             for line in self.process.stdout:
                 if not self.is_running:
                     break
-                
-                is_error_or_warn = (" E/" in line or "FATAL" in line or " W/" in line)
-                if self.chk_errors.get() and not is_error_or_warn:
+
+                keep, tag = self.service.should_keep_line(
+                    line,
+                    errors_only=bool(self.chk_errors.get()),
+                    filter_text=self.entry_filter.get().strip(),
+                )
+                if not keep:
                     continue
-                    
-                f = self.entry_filter.get().lower()
-                if f and f not in line.lower():
-                    continue
-                
-                tags = "error" if (" E/" in line or "FATAL" in line) else "warn" if " W/" in line else "normal"
+
                 try:
-                    self.app.after(0, self._safe_insert, line, tags)
+                    self.app.after(0, self._safe_insert, line, tag)
                 except:
                     pass
         except:
@@ -114,7 +116,7 @@ class FrameLiveLog(ctk.CTkFrame):
             pass
 
     def clear(self): 
-        self.app.adb_cmd(["logcat", "-c"])
+        self.service.clear_logcat(self.app.current_device_id)
         self.txt_log.configure(state="normal")
         self.txt_log.delete("1.0", "end")
         self.txt_log.configure(state="disabled")

@@ -1,20 +1,14 @@
 import customtkinter as ctk
 import threading
-import re
-import time
-import urllib.request
-import urllib.parse
-import ssl
-from PIL import Image
-import io
-import random
 import utils
-from utils import run_adb, ToolTip
+from utils import ToolTip
+from services import WirelessService
 
 class FrameWireless(ctk.CTkFrame):
     def __init__(self, parent, app):
         super().__init__(parent, fg_color="transparent")
         self.app = app
+        self.service = WirelessService(self.app.adb_cmd)
         
         ctk.CTkLabel(self, text="Conectar Dispositivo", font=("Segoe UI", 24, "bold"), text_color="#F8FAFC").pack(anchor="w", pady=(0,5))
         ctk.CTkLabel(self, text="Conecta tu dispositivo mediante Wi-Fi de forma remota o cable USB.", font=("Segoe UI", 13), text_color="#94A3B8").pack(anchor="w", pady=(0,15))
@@ -45,26 +39,17 @@ class FrameWireless(ctk.CTkFrame):
             pass
 
     def _wait_for_connection_port(self, target_ip, timeout=12):
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            out = run_adb(["mdns", "services"]) 
-            if out:
-                for line in out.split('\n'):
-                    if "_adb-tls-connect" in line and target_ip in line:
-                        match = re.search(r"(\d+\.\d+\.\d+\.\d+:\d+)", line)
-                        if match:
-                            return match.group(1)
-            time.sleep(1.5) 
-        return None
+        return self.service.wait_for_connection_port(target_ip, timeout=timeout)
 
     def _end_process(self, btn, text, msg, success=False):
         self._safe_after(0, lambda: btn.configure(text=text, state="normal"))
         self._safe_after(100, lambda: utils.ShowInfo(self.app, "¡Éxito!" if success else "Error de Conexión", msg, not success))
 
     def setup_qr_tab(self):
-        self.qr_pass = str(random.randint(100000, 999999))
-        self.qr_name = f"DevThinker-{random.randint(100,999)}"
-        self.qr_data = f"WIFI:T:ADB;S:{self.qr_name};P:{self.qr_pass};;"
+        payload = self.service.build_qr_payload()
+        self.qr_pass = payload["qr_pass"]
+        self.qr_name = payload["qr_name"]
+        self.qr_data = payload["qr_data"]
         
         instructions = (
             "1. Ve a Opciones de Desarrollador > Depuración Inalámbrica.\n"
@@ -75,72 +60,45 @@ class FrameWireless(ctk.CTkFrame):
         f_content = ctk.CTkFrame(self.tab_qr, fg_color="transparent")
         f_content.pack(fill="both", expand=True)
         
-        self.lbl_qr = ctk.CTkLabel(f_content, text="Cargando código QR seguro...", font=("Segoe UI", 12), text_color="#94A3B8")
+        self.lbl_qr = ctk.CTkLabel(f_content, text="Cargando código QR...", font=("Segoe UI", 12), text_color="#94A3B8")
         self.lbl_qr.pack(expand=True)
         
         self.btn_scan = ctk.CTkButton(f_content, text="🔍 Buscar y Conectar", font=("Segoe UI", 14, "bold"), fg_color="#10B981", hover_color="#059669", height=45, width=220, command=self.scan_mdns, text_color_disabled="#94A3B8")
         self.btn_scan.pack(pady=20)
         ToolTip(self.btn_scan, "Busca el dispositivo en la red Wi-Fi y maneja ambos puertos automáticamente.")
         
-        threading.Thread(target=self.load_qr, daemon=True).start()
+        self.after(50, self.load_qr)
 
     def load_qr(self):
         try:
-            data = urllib.parse.quote(self.qr_data)
-            urls = [
-                f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={data}&bgcolor=FFFFFF",
-                f"https://quickchart.io/qr?text={data}&size=200&light=ffffff",
-                f"https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl={data}"
-            ]
-            
-            img_data = None
-            ctx = ssl._create_unverified_context()
-            
-            for url in urls:
-                try:
-                    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-                    with urllib.request.urlopen(req, context=ctx, timeout=4) as response:
-                        img_data = response.read()
-                        if img_data:
-                            break
-                except:
-                    continue
-                    
-            if not img_data:
-                raise Exception("APIs failed")
-                
-            image = Image.open(io.BytesIO(img_data))
-            ctk_img = ctk.CTkImage(light_image=image, dark_image=image, size=(200, 200))
-            self._safe_after(0, lambda: self.lbl_qr.configure(image=ctk_img, text=""))
-        except:
-            self._safe_after(0, lambda: self.lbl_qr.configure(text="❌ Error al cargar QR.\nVerifica tu conexión a Internet o Firewall.", text_color="#EF4444"))
+            image = self.service.fetch_qr_image(self.qr_data)
+            ctk_img = ctk.CTkImage(light_image=image, dark_image=image, size=(220, 220))
+            self._qr_image = ctk_img
+            self._safe_after(0, lambda: self.lbl_qr.configure(image=self._qr_image, text=""))
+
+        except Exception:
+            self._safe_after(0, lambda: self.lbl_qr.configure(text="❌ Error generando código QR.", text_color="#EF4444"))
 
     def scan_mdns(self):
         self.btn_scan.configure(text="⏳ Rastreando la red local...", state="disabled")
         threading.Thread(target=self._mdns_thread, daemon=True).start()
 
     def _mdns_thread(self):
-        run_adb(["mdns", "check"])
-        out = run_adb(["mdns", "services"])
+        self.app.adb_cmd(["mdns", "check"])
+        out = self.service.find_pairing_port(self.qr_name)
         if not out:
             self._end_process(self.btn_scan, "🔍 Buscar y Conectar", "La red local no responde. Verifica que la PC tenga Wi-Fi activado o desactiva VPNs.", False)
             return
-            
-        lines = out.split('\n')
-        pairing_ip_port = None
-        for line in lines:
-            if self.qr_name in line and "_adb-tls-pairing" in line:
-                match = re.search(r"(\d+\.\d+\.\d+\.\d+:\d+)", line)
-                if match:
-                    pairing_ip_port = match.group(1)
-        
+
+        pairing_ip_port = out
+
         if not pairing_ip_port:
             self._end_process(self.btn_scan, "🔍 Buscar y Conectar", "No se detectó el celular.\n1. Asegúrate de tener la pantalla del escáner QR abierta en el teléfono.\n2. Revisa que estén en la misma red Wi-Fi.", False)
             return
             
         self._safe_after(0, lambda: self.btn_scan.configure(text="⏳ Vinculando dispositivo..."))
         
-        pair_res = run_adb(["pair", pairing_ip_port, self.qr_pass]) 
+        pair_res = self.service.pair_with_qr(pairing_ip_port, self.qr_pass)
         if not pair_res or ("Failed" in pair_res or "error" in pair_res.lower()):
             self._end_process(self.btn_scan, "🔍 Buscar y Conectar", f"El teléfono rechazó la vinculación. Intenta de nuevo.\nDetalle: {pair_res}", False)
             return
@@ -151,8 +109,12 @@ class FrameWireless(ctk.CTkFrame):
         connect_ip_port = self._wait_for_connection_port(ip_only)
         
         if connect_ip_port:
-            conn_res = run_adb(["connect", connect_ip_port]) 
-            if "connected" in conn_res.lower():
+            conn_res = self.service.connect(connect_ip_port)
+            try:
+                utils.wireless_log(f"connect result: {repr(conn_res)} for {connect_ip_port}")
+            except Exception:
+                pass
+            if conn_res and "connected" in conn_res.lower():
                 self._end_process(self.btn_scan, "🔍 Buscar y Conectar", f"El dispositivo se conectó exitosamente de forma inalámbrica en:\n{connect_ip_port}", True)
             else:
                 self._end_process(self.btn_scan, "🔍 Buscar y Conectar", f"Se encontró el puerto, pero ADB denegó la conexión final:\n{conn_res}", False)
@@ -203,9 +165,14 @@ class FrameWireless(ctk.CTkFrame):
             threading.Thread(target=self._manual_connect_thread, args=(pair_addr, pair_code), daemon=True).start()
         else:
             self.app.show_toast("Conectando...", color="#38BDF8")
-            utils.run_async(lambda: run_adb(['connect', pair_addr]), lambda res: self._post_connect_legacy(res), self.app)
+            utils.run_async(lambda: self.service.connect(pair_addr), lambda res: self._post_connect_legacy(res), self.app)
 
     def _post_connect_legacy(self, res):
+        try:
+            utils.wireless_log(f"_post_connect_legacy res: {repr(res)}")
+        except Exception:
+            pass
+
         if res and "connected" in res.lower() and "fail" not in res.lower():
             self.app.show_toast("¡Conectado exitosamente!", color="#10B981")
         elif res and ("fail" in res.lower() or "cannot connect" in res.lower() or "error" in res.lower()):
@@ -216,8 +183,8 @@ class FrameWireless(ctk.CTkFrame):
         self._safe_after(0, lambda: self.btn_manual_connect.configure(text="Vincular / Conectar", state="normal"))
 
     def _manual_connect_thread(self, pair_addr, pair_code):
-        run_adb(["mdns", "check"]) 
-        pair_res = run_adb(["pair", pair_addr, pair_code])
+        self.app.adb_cmd(["mdns", "check"]) 
+        pair_res = self.service.pair_with_qr(pair_addr, pair_code)
         
         if pair_res and ("Successfully paired" in pair_res or "Already paired" in pair_res or "successfully" in pair_res.lower()):
             self._safe_after(0, lambda: self.btn_manual_connect.configure(text="⏳ Conectando..."))
@@ -226,8 +193,12 @@ class FrameWireless(ctk.CTkFrame):
             connect_ip_port = self._wait_for_connection_port(ip_only)
             
             if connect_ip_port:
-                conn_res = run_adb(["connect", connect_ip_port])
-                if "connected" in conn_res.lower():
+                conn_res = self.service.connect(connect_ip_port)
+                try:
+                    utils.wireless_log(f"manual connect result: {repr(conn_res)} for {connect_ip_port}")
+                except Exception:
+                    pass
+                if conn_res and "connected" in conn_res.lower():
                     self._end_process(self.btn_manual_connect, "Vincular / Conectar", f"¡Conexión inyectada automáticamente en {connect_ip_port}!", True)
                     return
             
@@ -258,13 +229,7 @@ class FrameWireless(ctk.CTkFrame):
         self.btn_usb_connect.configure(text="⏳ Buscando...", state="disabled")
         
         def task():
-            out = run_adb(["devices"])
-            if out and out.count('\n') > 1:
-                return out
-                
-            run_adb(["kill-server"])
-            run_adb(["start-server"])
-            return run_adb(["devices"])
+            return self.service.scan_usb()
             
         def on_done(out):
             self._safe_after(0, lambda: self.btn_usb_connect.configure(text="Buscar Dispositivo USB", state="normal"))
@@ -272,22 +237,9 @@ class FrameWireless(ctk.CTkFrame):
             if not out:
                 self.app.show_toast("Error crítico al ejecutar ADB", color="#EF4444")
                 return
-                
-            lines = out.strip().split('\n')
-            state = "missing"
-            
-            for line in lines:
-                if "List" in line or not line.strip(): continue
-                if "unauthorized" in line:
-                    state = "unauthorized"
-                    break
-                elif "offline" in line:
-                    state = "offline"
-                    break
-                elif "device" in line:
-                    state = "connected"
-                    break
-                    
+
+            state = self.service.parse_usb_state(out)
+
             if state == "connected":
                 self.app.show_toast("¡Dispositivo USB detectado y listo!", color="#10B981")
             elif state == "unauthorized":

@@ -26,5 +26,5 @@ rmdir /s /q temp_dist 2>nul
 rmdir /s /q temp_build 2>nul
 del /q DevThinker.spec 2>nul
 
-echo [+] Exito! DevThinker.exe actualizado sin borrar otros archivos.
+echo [+] Exito! Tu DevThinker.exe esta listo.
 pause

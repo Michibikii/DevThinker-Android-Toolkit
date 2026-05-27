@@ -1,6 +1,6 @@
 import customtkinter as ctk
-import re
 from utils import ToolTip
+from services import AnalyzerService
 
 class FrameAnalyzer(ctk.CTkFrame):
     def __init__(self, parent):
@@ -33,57 +33,20 @@ class FrameAnalyzer(ctk.CTkFrame):
         self.res.configure(state="disabled")
 
     def on_focus(self, event):
-        if self.txt_input.get("1.0", "end-1c") == "[Pega el registro de error o stack trace aquí...]":
+        if self.txt_input.get("1.0", "end-1c") == AnalyzerService.PLACEHOLDER:
             self.txt_input.delete("1.0", "end")
             self.txt_input.configure(text_color="#E2E8F0")
 
     def on_unfocus(self, event):
         if not self.txt_input.get("1.0", "end-1c").strip():
             self.txt_input.configure(text_color="#64748B")
-            self.txt_input.insert("1.0", "[Pega el registro de error o stack trace aquí...]")
+            self.txt_input.insert("1.0", AnalyzerService.PLACEHOLDER)
 
     def analyze(self):
         log = self.txt_input.get("1.0", "end")
         
         self.res.configure(state="normal")
-        
-        if "Pega el registro" in log: 
-            self.res.delete("1.0", "end")
-            self.res.insert("end", "⚠️ Por favor, pega un registro primero.")
-            self.res.configure(state="disabled")
-            return
-
-        report = "✅ No se detectó ningún crash en el texto proporcionado."
-        if "FATAL" in log or "Exception" in log:
-            report = "🔥 CRASH DETECTADO\n" + "-"*40 + "\n"
-            lines = log.split('\n')
-            
-            root_cause = "Error Desconocido"
-            for line in lines:
-                if "Caused by:" in line:
-                    root_cause = line.split("Caused by:")[1].strip()
-            
-            if root_cause == "Error Desconocido":
-                match = re.search(r"FATAL EXCEPTION:.*?\n.*?(\w+\.\w+Exception)", log, re.DOTALL)
-                if match:
-                    root_cause = match.group(1)
-
-            loc = "Framework del Sistema (¿No es tu código?)"
-            for line in lines:
-                if "at " in line and "(" in line:
-                    if not any(x in line for x in ["android.", "java.", "com.android", "zygote", "androidx."]):
-                        loc = line.strip().replace("at ", "")
-                        break
-            
-            report += f"❌ CAUSA: {root_cause}\n\n📍 ARCHIVO SOSPECHOSO:\n   {loc}\n"
-            
-            if "NullPointer" in root_cause:
-                report += "\n💡 EXPLICACIÓN: Intentaste usar una variable que estaba vacía (null). Verifica si inicializaste tus vistas o variables."
-            if "IndexOutOfBounds" in root_cause:
-                report += "\n💡 EXPLICACIÓN: Intentaste obtener un ítem de una lista, pero el índice era demasiado grande (o la lista estaba vacía)."
-            if "ActivityNotFound" in root_cause:
-                report += "\n💡 EXPLICACIÓN: Intentaste abrir una pantalla (Activity) que no está declarada en el AndroidManifest.xml."
-
+        report = AnalyzerService.analyze_log(log)
         self.res.delete("1.0", "end")
         self.res.insert("end", report)
         self.res.configure(state="disabled")

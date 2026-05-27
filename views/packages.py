@@ -2,11 +2,13 @@ import customtkinter as ctk
 from tkinter import filedialog
 import utils
 from utils import ToolTip, requires_device, run_async
+from services import PackageService
 
 class FramePackages(ctk.CTkFrame):
     def __init__(self, parent, app):
         super().__init__(parent, fg_color="transparent")
         self.app = app
+        self.service = PackageService(self.app.adb_cmd)
         
         ctk.CTkLabel(self, text="Gestor de Paquetes", font=("Segoe UI", 24, "bold"), text_color="#F8FAFC").pack(anchor="w", pady=(0, 5))
         ctk.CTkLabel(self, text="Gestiona aplicaciones de terceros instaladas en el dispositivo.", font=("Segoe UI", 13), text_color="#94A3B8").pack(anchor="w", pady=(0, 15))
@@ -33,14 +35,14 @@ class FramePackages(ctk.CTkFrame):
         self.scroll.pack(fill="both", expand=True, pady=10)
         
         self.items = []
-        self.row_widgets = [] # Optimización: Guardamos referencia para el buscador rápido
+        self.row_widgets = []
 
     @requires_device
     def install_apk(self):
         f = filedialog.askopenfilename(filetypes=[("APK", "*.apk")])
         if f:
             self.app.show_toast("Instalando... por favor espera.", color="#38BDF8")
-            run_async(lambda: self.app.adb_cmd(["install", "-r", f'"{f}"'], timeout=None),
+            run_async(lambda: self.service.install_apk(f),
                       lambda res: self.app.show_toast("Instalación Terminada"), 
                       self.app)
 
@@ -50,8 +52,7 @@ class FramePackages(ctk.CTkFrame):
         self.lbl_status.configure(text="Cargando...")
         
         def task():
-            out = self.app.adb_cmd(["shell", "pm", "list", "packages", "-3"])
-            return [l.replace("package:", "").strip() for l in out.split('\n') if l] if out else []
+            return self.service.list_third_party_packages()
             
         run_async(task, self.finish, self.app)
 
@@ -70,13 +71,7 @@ class FramePackages(ctk.CTkFrame):
         self.lbl_status.configure(text=f"Encontradas {len(pkgs)} apps")
 
     def extract_app_name(self, pkg):
-        # Transforma "com.google.android.youtube" en "Youtube"
-        parts = pkg.split('.')
-        ignore = ['com', 'org', 'net', 'android', 'google', 'apps', 'mobile', 'app']
-        filtered = [p for p in parts if p.lower() not in ignore]
-        if filtered:
-            return filtered[-1].capitalize()
-        return parts[-1].capitalize()
+        return self.service.extract_app_name(pkg)
 
     def add_row(self, pkg):
         app_name = self.extract_app_name(pkg)
@@ -118,20 +113,20 @@ class FramePackages(ctk.CTkFrame):
     @requires_device
     def act(self, pkg, action):
         if action == "abrir":
-            run_async(lambda: self.app.adb_cmd(["shell", "monkey", "-p", pkg, "-c", "android.intent.category.LAUNCHER", "1"]))
+            run_async(lambda: self.service.launch_app(pkg))
             self.app.show_toast(f"Abriendo {pkg}...", color="#38BDF8")
             return
         
         if action == "forzar":
-            run_async(lambda: self.app.adb_cmd(["shell", "am", "force-stop", pkg]))
+            run_async(lambda: self.service.force_stop(pkg))
             self.app.show_toast(f"Cerrando {pkg}...", color="#8B5CF6")
             return
 
         if utils.AskYesNo(self.app, "Confirmar", f"¿{action.title()} {pkg}?").get():
-            cmd = ["uninstall", pkg] if action == "desinstalar" else ["shell", "pm", "clear", pkg]
+            task = self.service.uninstall if action == "desinstalar" else self.service.clear_data
             def callback(res):
                 self.app.show_toast("Hecho")
                 if action == "desinstalar":
                     self.refresh()
                 
-            run_async(lambda: self.app.adb_cmd(cmd), callback, self.app)
+            run_async(lambda: task(pkg), callback, self.app)

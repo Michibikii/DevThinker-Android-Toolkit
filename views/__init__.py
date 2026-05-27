@@ -3,6 +3,7 @@ from .device_stats import FrameDeviceStats
 from .live_log import FrameLiveLog
 from .analyzer import FrameAnalyzer
 from .wireless import FrameWireless
+from .welcome import FrameWelcome
 from .packages import FramePackages
 from .tools import FrameTools
 from .terminal import FrameTerminal

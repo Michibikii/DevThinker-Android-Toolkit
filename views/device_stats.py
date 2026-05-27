@@ -1,8 +1,8 @@
 import customtkinter as ctk
 import threading
 import time
-import re
 from utils import ToolTip
+from services import DeviceMonitorService
 
 class FrameDeviceStats(ctk.CTkFrame):
     def __init__(self, parent, app):
@@ -98,42 +98,12 @@ class FrameDeviceStats(ctk.CTkFrame):
                 continue
 
             try:
-                ram_out = self.app.adb_cmd(["shell", "cat", "/proc/meminfo"])
-                total_ram, avail_ram = 0, 0
-                if ram_out:
-                    m_total = re.search(r"MemTotal:\s+(\d+)", ram_out)
-                    m_avail = re.search(r"MemAvailable:\s+(\d+)", ram_out)
-                    if m_total and m_avail:
-                        total_ram = int(m_total.group(1)) / 1024
-                        avail_ram = int(m_avail.group(1)) / 1024
-                
                 if not self.is_monitoring: break
-
-                sto_out = self.app.adb_cmd(["shell", "df", "/data"])
-                sto_pct, sto_used, sto_total = 0, "0", "0"
-                if sto_out:
-                    lines = sto_out.split('\n')
-                    if len(lines) > 1:
-                        parts = lines[1].split()
-                        if len(parts) >= 5:
-                            sto_total_raw = parts[1]
-                            sto_used_raw = parts[2]
-                            pct_str = parts[4].replace('%', '')
-                            if pct_str.isdigit():
-                                sto_pct = int(pct_str)
-                                sto_total = f"{int(sto_total_raw) / 1048576:.1f} GB" 
-                                sto_used = f"{int(sto_used_raw) / 1048576:.1f} GB"
-
-                if not self.is_monitoring: break
-
-                cpu_out = self.app.adb_cmd(["shell", "top", "-n", "1", "-b", "-m", "15"])
-                cpu_text = "No se pudo obtener información de la CPU."
-                if cpu_out:
-                    cpu_text = cpu_out
+                stats = DeviceMonitorService.build_system_stats(self.app.current_device_id)
 
                 if self.is_monitoring:
                     try:
-                        self.app.after(0, self._update_ui, total_ram, avail_ram, sto_pct, sto_used, sto_total, cpu_text)
+                        self.app.after(0, self._update_ui, stats)
                     except:
                         pass
                 
@@ -150,21 +120,21 @@ class FrameDeviceStats(ctk.CTkFrame):
         except:
             pass
 
-    def _update_ui(self, total_ram, avail_ram, sto_pct, sto_used, sto_total, cpu_text):
+    def _update_ui(self, stats):
         if not self.is_monitoring:
             return
 
-        if total_ram > 0:
-            used_ram = total_ram - avail_ram
-            ram_pct = used_ram / total_ram
+        if stats.total_ram > 0:
+            used_ram = stats.total_ram - stats.avail_ram
+            ram_pct = used_ram / stats.total_ram
             self.bar_ram.set(ram_pct)
-            self.lbl_ram_text.configure(text=f"{int(used_ram)} MB / {int(total_ram)} MB ({int(ram_pct * 100)}%)")
+            self.lbl_ram_text.configure(text=f"{int(used_ram)} MB / {int(stats.total_ram)} MB ({int(ram_pct * 100)}%)")
 
-        if sto_pct > 0:
-            self.bar_sto.set(sto_pct / 100.0)
-            self.lbl_sto_text.configure(text=f"{sto_used} / {sto_total} ({sto_pct}%)")
+        if stats.sto_pct > 0:
+            self.bar_sto.set(stats.sto_pct / 100.0)
+            self.lbl_sto_text.configure(text=f"{stats.sto_used} / {stats.sto_total} ({stats.sto_pct}%)")
 
         self.txt_cpu.configure(state="normal")
         self.txt_cpu.delete("1.0", "end")
-        self.txt_cpu.insert("end", cpu_text)
+        self.txt_cpu.insert("end", stats.cpu_text)
         self.txt_cpu.configure(state="disabled")

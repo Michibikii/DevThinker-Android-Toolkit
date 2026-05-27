@@ -1,191 +1,62 @@
-import shutil
 import os
-import subprocess
-import ssl
-import json
 import threading
-import platform
-import urllib.request
-import zipfile
-import io
-import time
 import customtkinter as ctk
-from tkinter import filedialog
+import infrastructure.adb_client as adb_client
+from ui.widgets import ToolTip, ToastNotification, center_toplevel
+from infrastructure import (
+    ConfigManager,
+    check_adb_update,
+    download_and_install_adb,
+    find_adb,
+    get_adb_url_and_sys,
+    refresh_adb_path,
+    run_adb,
+    set_manual_adb_path,
+    uninstall_adb,
+)
 
-CONFIG_FILE = "config.json"
 
-class ConfigManager:
-    @staticmethod
-    def load_config():
-        if os.path.exists(CONFIG_FILE):
-            try:
-                with open(CONFIG_FILE, "r") as f:
-                    return json.load(f)
-            except:
-                pass
-        return {}
-
-    @staticmethod
-    def save_config(key, value):
-        data = ConfigManager.load_config()
-        data[key] = value
-        try:
-            with open(CONFIG_FILE, "w") as f:
-                json.dump(data, f)
-        except:
-            pass
-
-def find_adb():
-    data = ConfigManager.load_config()
-    saved = data.get("adb_path")
-    if saved and os.path.exists(saved):
-        return saved
-    
-    adb_path = shutil.which("adb")
-    if adb_path:
-        return adb_path
-    
-    possible = [
-        os.path.expanduser("~\\AppData\\Local\\Android\\Sdk\\platform-tools\\adb.exe"),
-        "C:\\Android\\platform-tools\\adb.exe",
-        "/usr/local/bin/adb"
-    ]
-    for p in possible:
-        if os.path.exists(p):
-            return p
-    return None
-
-ADB_PATH = find_adb()
-
-def get_adb_url_and_sys():
-    system = platform.system().lower()
-    if system == "windows":
-        return "https://dl.google.com/android/repository/platform-tools-latest-windows.zip", "adb.exe"
-    elif system == "darwin":
-        return "https://dl.google.com/android/repository/platform-tools-latest-darwin.zip", "adb"
-    else:
-        return "https://dl.google.com/android/repository/platform-tools-latest-linux.zip", "adb"
-
-def check_adb_update():
-    if not ADB_PATH or not os.path.exists(ADB_PATH):
-        return False, None
-    url, _ = get_adb_url_and_sys()
+def _write_log(filename: str, msg: str):
     try:
-        ctx = ssl._create_unverified_context()
-        req = urllib.request.Request(url, method='HEAD')
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        log_dir = os.path.join(base_dir, "logs")
+        os.makedirs(log_dir, exist_ok=True)
+        log_path = os.path.join(log_dir, filename)
+        with open(log_path, "a", encoding="utf-8") as f:
+            from datetime import datetime
+            f.write(f"[{datetime.now().isoformat()}] {msg}\n")
+    except Exception:
+        pass
 
-        with urllib.request.urlopen(req, timeout=5, context=ctx) as response: 
-            remote_ver = response.headers.get('ETag') or response.headers.get('Last-Modified')
-            local_ver = ConfigManager.load_config().get("adb_version")
-            return (remote_ver != local_ver), remote_ver
-    except:
-        return False, None
 
-def download_and_install_adb(target_dir=None, progress_callback=None):
-    global ADB_PATH
-    url, exe_name = get_adb_url_and_sys()
-    if not target_dir:
-        target_dir = os.path.join(os.path.expanduser("~"), ".devthinker")
+def debug_log(msg: str):
+    _write_log("debug.log", msg)
 
-    tools_dir = os.path.join(target_dir, "platform-tools")
-    adb_path = os.path.join(tools_dir, exe_name)
 
-    try:
-        if progress_callback:
-            progress_callback(0, 0, 0, "Preparando el sistema...")
-        if platform.system().lower() == "windows":
-            os.system("taskkill /F /IM adb.exe >nul 2>&1")
-        else:
-            os.system("killall adb >/dev/null 2>&1")
-        time.sleep(1)
-        ctx = ssl._create_unverified_context()
-        req = urllib.request.Request(url, headers={'User-Agent': 'DevThinker/1.0'})
-        with urllib.request.urlopen(req, timeout=30, context=ctx) as response:
-            total_size = int(response.headers.get('content-length', 0))
-            remote_ver = response.headers.get('ETag') or response.headers.get('Last-Modified')
-            
-            downloaded = 0
-            chunk_size = 16384
-            data = bytearray()
-            start_time = time.time()
-            last_update = 0
-            
-            while True:
-                chunk = response.read(chunk_size)
-                if not chunk:
-                    break
-                data.extend(chunk)
-                downloaded += len(chunk)
-                
-                current_time = time.time()
-                if progress_callback and (current_time - last_update > 0.1):
-                    elapsed = current_time - start_time
-                    speed = (downloaded / 1048576) / elapsed if elapsed > 0 else 0
-                    progress_callback(downloaded, total_size, speed, "Descargando binarios...")
-                    last_update = current_time
+def crash_log(msg: str):
+    _write_log("crash.log", msg)
 
-        if progress_callback:
-            progress_callback(total_size, total_size, 0, "Extrayendo motor...")
-        with zipfile.ZipFile(io.BytesIO(data)) as z:
-            z.extractall(target_dir)
-        
-        if platform.system().lower() != "windows":
-            os.chmod(adb_path, 0o755)
-        
-        ConfigManager.save_config("adb_path", adb_path)
-        if remote_ver:
-            ConfigManager.save_config("adb_version", remote_ver)
-        
-        ADB_PATH = adb_path
-        return True
-    except:
-        return False
 
-def uninstall_adb():
-    global ADB_PATH
-    if not ADB_PATH or not os.path.exists(ADB_PATH):
-        ADB_PATH = None
-        return True
-    try:
-        if platform.system().lower() == "windows":
-            os.system("taskkill /F /IM adb.exe >nul 2>&1")
-        else:
-            os.system("killall adb >/dev/null 2>&1")
-        time.sleep(1)
-        
-        adb_dir = os.path.dirname(ADB_PATH)
-        if os.path.basename(adb_dir) == "platform-tools" and os.path.exists(adb_dir):
-            shutil.rmtree(adb_dir, ignore_errors=True)
-            
-        ConfigManager.save_config("adb_path", None)
-        ConfigManager.save_config("adb_version", None)
-        ADB_PATH = None
-        return True
-    except:
-        return False
+def device_log(msg: str):
+    _write_log("device.log", msg)
 
-def set_manual_adb_path():
-    global ADB_PATH
-    path = filedialog.askopenfilename(title="Seleccionar ADB", filetypes=[("exe", "*.exe"), ("all", "*.*")])
-    if path and os.path.exists(path):
-        ConfigManager.save_config("adb_path", path)
-        ADB_PATH = path
-        return True
-    return False
 
-def run_adb(args, timeout=15, encoding="utf-8"):
-    if not ADB_PATH or not os.path.exists(ADB_PATH):
-        return None
-    try:
-        cmd = [ADB_PATH] + args
-        si = None
-        if os.name == 'nt':
-            si = subprocess.STARTUPINFO()
-            si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, startupinfo=si, encoding=encoding, errors='replace')
-        return res.stdout.strip()
-    except:
-        return None
+def wireless_log(msg: str):
+    _write_log("wireless.log", msg)
+
+
+def adb_log(msg: str):
+    _write_log("adb.log", msg)
+
+
+def __getattr__(name):
+    if name == "ADB_PATH":
+        return adb_client.ADB_PATH
+    raise AttributeError(name)
+
+
+def _kill_adb_process():
+    return adb_client._kill_adb_process()
 
 def run_async(task_func, callback_func=None, app=None):
     def wrapper():
@@ -211,9 +82,10 @@ def requires_device(func):
     return wrapper
 
 def center_toplevel(win, parent, w, h):
+    parent.update_idletasks()
     win.update_idletasks()
-    x = parent.winfo_x() + (parent.winfo_width() // 2) - (w // 2)
-    y = parent.winfo_y() + (parent.winfo_height() // 2) - (h // 2)
+    x = parent.winfo_rootx() + (parent.winfo_width() // 2) - (w // 2)
+    y = parent.winfo_rooty() + (parent.winfo_height() // 2) - (h // 2)
     win.geometry(f"{w}x{h}+{x}+{y}")
 
 class AskYesNo(ctk.CTkToplevel):
@@ -245,7 +117,7 @@ class AskYesNo(ctk.CTkToplevel):
         return self.result
 
 class AskString(ctk.CTkToplevel):
-    def __init__(self, parent, title, text):
+    def __init__(self, parent, title, text, initial_value=""):
         super().__init__(parent)
         self.title(title)
         self.attributes("-topmost", True)
@@ -256,6 +128,9 @@ class AskString(ctk.CTkToplevel):
         ctk.CTkLabel(self, text=text, font=("Segoe UI", 14)).pack(pady=(20, 10))
         self.entry = ctk.CTkEntry(self, width=300)
         self.entry.pack(pady=5)
+        if initial_value:
+            self.entry.insert(0, initial_value)
+            self.entry.select_range(0, "end")
         self.entry.focus()
         
         f = ctk.CTkFrame(self, fg_color="transparent")
@@ -293,62 +168,3 @@ class ShowInfo(ctk.CTkToplevel):
         self.grab_set()
         self.wait_window()
 
-class ToolTip:
-    def __init__(self, widget, text, delay=600):
-        self.widget = widget
-        self.text = text
-        self.delay = delay
-        self.tip_window = None
-        self.id = None
-        self.widget.bind("<Enter>", self.schedule)
-        self.widget.bind("<Leave>", self.hide)
-        self.widget.bind("<ButtonPress>", self.hide)
-
-    def schedule(self, event=None):
-        self.unschedule()
-        self.id = self.widget.after(self.delay, self.show)
-
-    def unschedule(self):
-        if self.id:
-            self.widget.after_cancel(self.id)
-            self.id = None
-
-    def show(self):
-        if self.tip_window or not self.text:
-            return
-        try:
-            x = self.widget.winfo_rootx() + 20
-            y = self.widget.winfo_rooty() + self.widget.winfo_height() + 10
-            self.tip_window = ctk.CTkToplevel(self.widget)
-            self.tip_window.wm_overrideredirect(True)
-            self.tip_window.wm_geometry(f"+{x}+{y}")
-            self.tip_window.attributes('-topmost', True) 
-            label = ctk.CTkLabel(self.tip_window, text=self.text, justify='left', fg_color="#181D2B", text_color="#F8FAFC", border_width=1, border_color="#252D40", corner_radius=6, font=("Segoe UI", 11))
-            label.pack(ipadx=8, ipady=4)
-        except:
-            self.hide()
-
-    def hide(self, event=None):
-        self.unschedule()
-        if self.tip_window:
-            try:
-                self.tip_window.destroy()
-            except:
-                pass
-            self.tip_window = None
-
-class ToastNotification(ctk.CTkToplevel):
-    def __init__(self, parent, message, color="#10B981"):
-        super().__init__(parent)
-        self.overrideredirect(True)
-        self.attributes("-topmost", True)
-        try:
-            x = parent.winfo_x() + parent.winfo_width() - 320
-            y = parent.winfo_y() + parent.winfo_height() - 70
-            self.geometry(f"300x50+{x}+{y}")
-        except:
-            self.geometry("300x50")
-        f = ctk.CTkFrame(self, fg_color=color, corner_radius=10)
-        f.pack(fill="both", expand=True)
-        ctk.CTkLabel(f, text=message, font=("Segoe UI", 13, "bold"), text_color="white").pack(expand=True)
-        self.after(2500, self.destroy)

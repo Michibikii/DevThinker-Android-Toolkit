@@ -96,16 +96,16 @@ class FrameTools(ctk.CTkFrame):
             w.destroy()
         
         if not utils.ADB_PATH or not os.path.exists(utils.ADB_PATH):
-            btn_inst = ctk.CTkButton(self.adb_btn_frame, text="📥 Instalar ADB", height=45, font=("Segoe UI", 14, "bold"), fg_color="#10B981", hover_color="#059669", command=self.prompt_install)
+            btn_inst = ctk.CTkButton(self.adb_btn_frame, text="📥 Instalar ADB", height=45, font=("Segoe UI", 14, "bold"), fg_color="#10B981", hover_color="#059669", command=lambda: self.prompt_install("install"))
             btn_inst.pack(fill="x", expand=True)
             ToolTip(btn_inst, "Descarga e instala los binarios oficiales para hacer funcionar la app.")
             self.app.adb_update_available = False
         else:
-            btn_restart = ctk.CTkButton(self.adb_btn_frame, text="💀 Reiniciar", width=110, height=40, font=("Segoe UI", 13, "bold"), fg_color="#8B5CF6", hover_color="#7C3AED", command=self.kill_adb)
+            btn_restart = ctk.CTkButton(self.adb_btn_frame, text="Reiniciar", width=110, height=40, font=("Segoe UI", 13, "bold"), fg_color="#8B5CF6", hover_color="#7C3AED", command=self.kill_adb)
             btn_restart.pack(side="left", padx=(0,8))
             ToolTip(btn_restart, "Mata y reinicia el servidor ADB de fondo. Úsalo si falla la conexión.")
 
-            btn_re = ctk.CTkButton(self.adb_btn_frame, text="Reinstalar", width=110, height=40, font=("Segoe UI", 13, "bold"), fg_color="#F59E0B", hover_color="#D97706", command=self.prompt_install)
+            btn_re = ctk.CTkButton(self.adb_btn_frame, text="Reinstalar", width=110, height=40, font=("Segoe UI", 13, "bold"), fg_color="#F59E0B", hover_color="#D97706", command=lambda: self.prompt_install("reinstall"))
             btn_re.pack(side="left", padx=(0,8))
             ToolTip(btn_re, "Vuelve a descargar los binarios de ADB.")
             
@@ -127,6 +127,10 @@ class FrameTools(ctk.CTkFrame):
             self.btn_upd.configure(text="Actualización Disponible", fg_color="#38BDF8", hover_color="#0284C7", state="normal", text_color="#0B0F19", command=self.prompt_install)
             ToolTip(self.btn_upd, "Una versión oficial más reciente está lista para descargar.")
             self.app.adb_update_available = True
+            try:
+                self.btn_upd.configure(command=lambda: self.prompt_install("update"))
+            except Exception:
+                pass
         else:
             self.btn_upd.configure(text="ADB Actualizado", fg_color="#10B981", state="disabled", text_color_disabled="#F8FAFC")
             self.app.adb_update_available = False
@@ -145,7 +149,9 @@ class FrameTools(ctk.CTkFrame):
             self.refresh_adb_card_ui()
             self.app.frames["tools"].refresh_feature_states()
 
-    def prompt_install(self):
+    def prompt_install(self, mode="install"):
+        # mode: "install", "update", "reinstall"
+        self._install_mode = mode
         self.install_win = ctk.CTkToplevel(self)
         self.install_win.title("Instalar ADB")
         self.install_win.configure(fg_color="#0B0F19")
@@ -184,8 +190,15 @@ class FrameTools(ctk.CTkFrame):
             self.install_win.destroy()
             if success:
                 utils.refresh_adb_path()
-                self.app.show_toast("¡ADB Instalado Correctamente!", color="#10B981")
-                run_adb(["start-server"])
+                mode = getattr(self, "_install_mode", "install")
+                if mode == "update":
+                    msg = "¡ADB actualizado correctamente!"
+                elif mode == "reinstall":
+                    msg = "¡ADB reinstalado correctamente!"
+                else:
+                    msg = "¡ADB instalado correctamente!"
+                self.app.show_toast(msg, color="#10B981")
+                utils.run_adb(["start-server"])
                 self.refresh_adb_card_ui()
                 self.app.frames["tools"].refresh_feature_states()
             else:

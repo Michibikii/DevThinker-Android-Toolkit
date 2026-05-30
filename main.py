@@ -221,6 +221,11 @@ class DevThinkerApp(ctk.CTk):
         self.thread_safe_update("🚫 Sin Dispositivo", "Esperando conexión...", "", "#181D2B", "#F8FAFC", False)
         render_menu(self)
         self.frames["tools"].refresh_feature_states()
+        try:
+            if "welcome" in getattr(self, "frames", {}):
+                self.frames["welcome"].refresh_state()
+        except Exception:
+            pass
         self.show_frame("wireless")
 
     def device_monitor_loop(self):
@@ -258,6 +263,11 @@ class DevThinkerApp(ctk.CTk):
 
             if snapshot.is_connected and snapshot.device_id:
                 self.current_device_id = snapshot.device_id
+                try:
+                    if "welcome" in getattr(self, "frames", {}):
+                        self.frames["welcome"].refresh_state()
+                except Exception:
+                    pass
                 self.cached_dev_id = snapshot.device_id
                 self.cached_full_name = snapshot.full_name
                 self.cached_market_name = snapshot.market_name

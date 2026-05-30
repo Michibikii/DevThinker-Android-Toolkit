@@ -13,11 +13,12 @@ class FrameWelcome(ctk.CTkFrame):
         ctk.CTkLabel(hero, text="Tu hub de Android para conectar, inspeccionar y administrar dispositivos con ADB desde una interfaz limpia.", font=("Segoe UI", 14), text_color="#94A3B8", wraplength=820, justify="left").pack(anchor="w", padx=28, pady=(0, 18))
 
         actions = ctk.CTkFrame(hero, fg_color="transparent")
-        actions.pack(anchor="w", padx=28, pady=(0, 24))
+        actions.pack(fill="x", padx=28, pady=(0, 24))
 
-        ctk.CTkButton(actions, text="📡 Conectar Dispositivo", height=44, width=200, font=("Segoe UI", 13, "bold"), fg_color="#38BDF8", hover_color="#0284C7", command=lambda: self.app.show_frame("wireless")).pack(side="left", padx=(0, 12))
-        ctk.CTkButton(actions, text="🔧 Abrir Utilidades", height=44, width=180, font=("Segoe UI", 13, "bold"), fg_color="#8B5CF6", hover_color="#7C3AED", command=lambda: self.app.show_frame("tools")).pack(side="left", padx=(0, 12))
-        ctk.CTkButton(actions, text="📊 Ir al Panel Principal", height=44, width=200, font=("Segoe UI", 13, "bold"), fg_color="#10B981", hover_color="#059669", command=self.open_panel).pack(side="left")
+        self.connect_btn = ctk.CTkButton(actions, text="📡 Conectar Dispositivo", height=44, font=("Segoe UI", 13, "bold"), fg_color="#38BDF8", hover_color="#0284C7", command=lambda: self.app.show_frame("wireless"))
+        self.connect_btn.pack(fill="x")
+
+        ctk.CTkLabel(self, text="Opciones usadas recientemente", font=("Segoe UI", 14, "bold"), text_color="#F8FAFC").pack(anchor="w", padx=18, pady=(6, 6))
 
         grid = ctk.CTkFrame(self, fg_color="transparent")
         grid.pack(fill="both", expand=True, padx=10)
@@ -27,6 +28,8 @@ class FrameWelcome(ctk.CTkFrame):
         self._card(grid, 0, 1, "Explorador", "Gestiona archivos, crea carpetas y mueve contenido.")
         self._card(grid, 1, 0, "Herramientas", "Captura, scrcpy, texto y acciones rápidas.")
         self._card(grid, 1, 1, "Monitoreo", "RAM, CPU, almacenamiento y logcat en vivo.")
+
+        self.refresh_state()
 
     def _card(self, parent, row, col, title, body):
         card = ctk.CTkFrame(parent, fg_color="#181D2B", corner_radius=14, border_width=1, border_color="#252D40")
@@ -39,3 +42,13 @@ class FrameWelcome(ctk.CTkFrame):
             self.app.show_frame("stats")
         else:
             self.app.show_frame("wireless")
+
+    def refresh_state(self):
+        try:
+            if getattr(self.app, "current_device_id", None):
+                self.connect_btn.pack_forget()
+            else:
+                if not self.connect_btn.winfo_ismapped():
+                    self.connect_btn.pack(fill="x")
+        except Exception:
+            pass

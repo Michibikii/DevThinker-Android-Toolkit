@@ -77,7 +77,7 @@ class FrameWireless(ctk.CTkFrame):
             self._safe_after(0, lambda: self.lbl_qr.configure(image=self._qr_image, text=""))
 
         except Exception:
-            self._safe_after(0, lambda: self.lbl_qr.configure(text="❌ Error generando código QR.", text_color="#EF4444"))
+            self._safe_after(0, lambda: utils.show_alert(self.app, "Error", "No se pudo generar el código QR.", is_error=True))
 
     def scan_mdns(self):
         self.btn_scan.configure(text="⏳ Rastreando la red local...", state="disabled")
@@ -167,7 +167,7 @@ class FrameWireless(ctk.CTkFrame):
         pair_code = self.entry_code.get().strip()
 
         if not ip or not port:
-            self.app.show_toast("Debes rellenar al menos la IP y el Puerto", color="#F59E0B")
+            utils.show_alert(self.app, "Advertencia", "Debes rellenar al menos la IP y el Puerto.", is_error=False)
             return
 
         pair_addr = f"{ip}:{port}"
@@ -183,7 +183,7 @@ class FrameWireless(ctk.CTkFrame):
         if res and "connected" in res.lower() and "fail" not in res.lower():
             self.app.show_toast("¡Conectado exitosamente!", color="#10B981")
         elif res and ("fail" in res.lower() or "cannot connect" in res.lower() or "error" in res.lower()):
-            self.app.show_toast("Error al conectar", color="#EF4444")
+            utils.show_alert(self.app, "Error", "No se pudo completar la conexión manual.", is_error=True)
         else:
             self.app.show_toast("Intento finalizado", color="#F59E0B")
             
@@ -255,7 +255,7 @@ class FrameWireless(ctk.CTkFrame):
             self._safe_after(0, lambda: self.btn_usb_connect.configure(text="Buscar Dispositivo USB", state="normal"))
             
             if not out:
-                self.app.show_toast("Error crítico al ejecutar ADB", color="#EF4444")
+                utils.show_alert(self.app, "Error", "Error crítico al ejecutar ADB.", is_error=True)
                 return
 
             state = self.service.parse_usb_state(out)
@@ -277,7 +277,7 @@ class FrameWireless(ctk.CTkFrame):
                     utils.connection_log("usb failed state=offline")
                 except Exception:
                     pass
-                self.app.show_toast("Dispositivo offline. Desconecta y reconecta el cable.", color="#F59E0B")
+                utils.show_alert(self.app, "Advertencia", "El dispositivo está offline. Desconecta y reconecta el cable.", is_error=False)
             else:
                 try:
                     utils.connection_log(f"usb failed state={state!r}")

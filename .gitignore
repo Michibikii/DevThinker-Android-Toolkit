@@ -5,3 +5,5 @@ env/
 config.json
 crash_report.txt
 logs/
+dist/
+build/

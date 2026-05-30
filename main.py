@@ -164,14 +164,14 @@ class DevThinkerApp(ctk.CTk):
     def report_callback_exception(self, exc, val, tb):
         global_exception_handler(exc, val, tb)
         try:
-            self.show_toast("Error interno guardado en logs/crash.log", color="#EF4444")
+            utils.show_alert(self, "Error interno", "Se registró un crash en logs/crash.log.", is_error=True)
         except Exception:
             pass
 
     def adb_cmd(self, command_list, timeout=15):
         if not self.current_device_id:
             try:
-                self.show_toast("No hay dispositivo conectado", color="#EF4444")
+                utils.show_alert(self, "Advertencia", "No hay dispositivo conectado.", is_error=False)
             except Exception:
                 pass
             return None

@@ -21,6 +21,11 @@ pyinstaller --onefile --windowed --name "DevThinker" --distpath "temp_dist" --wo
 echo [+] Moviendo nuevo ejecutable a dist...
 move /y temp_dist\DevThinker.exe dist\ >nul
 
+if exist config.json (
+	echo [+] Copiando config.json a dist...
+	copy /y config.json dist\config.json >nul
+)
+
 echo [+] Limpiando archivos temporales...
 rmdir /s /q temp_dist 2>nul
 rmdir /s /q temp_build 2>nul

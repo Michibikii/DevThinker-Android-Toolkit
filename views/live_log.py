@@ -53,11 +53,11 @@ class FrameLiveLog(ctk.CTkFrame):
     
     def start(self):
         if not self.app.current_device_id: 
-            self.app.show_toast("Sin Dispositivo Conectado", color="#EF4444")
+            utils.show_alert(self.app, "Advertencia", "Sin dispositivo conectado.", is_error=False)
             return
 
         if not self.service.adb_ready():
-            self.app.show_toast("No se encontró ADB en el sistema", color="#EF4444")
+            utils.show_alert(self.app, "Error", "No se encontró ADB en el sistema.", is_error=True)
             return
             
         self.is_running = True

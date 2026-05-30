@@ -76,7 +76,7 @@ def run_async(task_func, callback_func=None, app=None):
 def requires_device(func):
     def wrapper(self, *args, **kwargs):
         if not self.app.current_device_id:
-            self.app.show_toast("No hay dispositivo conectado", color="#e74c3c")
+            show_alert(self.app, "Advertencia", "No hay dispositivo conectado", is_error=False)
             return
         return func(self, *args, **kwargs)
     return wrapper
@@ -167,4 +167,8 @@ class ShowInfo(ctk.CTkToplevel):
         self.bind("<Return>", lambda e: self.destroy())
         self.grab_set()
         self.wait_window()
+
+
+def show_alert(parent, title, text, is_error=False):
+    ShowInfo(parent, title, text, is_error=is_error)
 

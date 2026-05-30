@@ -71,7 +71,7 @@ class FrameDeviceStats(ctk.CTkFrame):
 
     def toggle_monitor(self):
         if not self.app.current_device_id and not self.is_monitoring:
-            self.app.show_toast("No hay dispositivo conectado", color="#EF4444")
+            utils.show_alert(self.app, "Advertencia", "No hay dispositivo conectado.", is_error=False)
             return
 
         if self.is_monitoring:

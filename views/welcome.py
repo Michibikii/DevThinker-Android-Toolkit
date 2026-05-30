@@ -121,9 +121,8 @@ class FrameWelcome(ctk.CTkFrame):
     def refresh_state(self):
         try:
             if getattr(self.app, "current_device_id", None):
-                self.connect_btn.pack_forget()
+                self.connect_btn.configure(state="disabled")
             else:
-                if not self.connect_btn.winfo_ismapped():
-                    self.connect_btn.pack(fill="x")
+                self.connect_btn.configure(state="normal")
         except Exception:
             pass

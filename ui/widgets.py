@@ -65,8 +65,8 @@ class ToastNotification(ctk.CTkFrame):
         super().__init__(parent, fg_color=color, corner_radius=10)
         parent.update_idletasks()
         try:
-            x = parent.winfo_rootx() + parent.winfo_width() - 320
-            y = parent.winfo_rooty() + parent.winfo_height() - 70
+            x = max(parent.winfo_width() - 320, 10)
+            y = max(parent.winfo_height() - 70, 10)
             self.place(x=x, y=y, width=300, height=50)
         except:
             self.place(x=0, y=0, width=300, height=50)

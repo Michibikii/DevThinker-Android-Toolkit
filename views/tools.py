@@ -145,12 +145,11 @@ class FrameTools(ctk.CTkFrame):
         if utils.AskYesNo(self.app, "Confirmar", "¿Eliminar ADB del sistema? El programa dejará de funcionar hasta que lo reinstales.").get():
             self.service.uninstall_adb()
             utils.refresh_adb_path()
-            self.app.show_toast("ADB Desinstalado exitosamente", "#EF4444")
+            utils.show_alert(self.app, "Advertencia", "ADB desinstalado exitosamente.", is_error=False)
             self.refresh_adb_card_ui()
             self.app.frames["tools"].refresh_feature_states()
 
     def prompt_install(self, mode="install"):
-        # mode: "install", "update", "reinstall"
         self._install_mode = mode
         self.install_win = ctk.CTkToplevel(self)
         self.install_win.title("Instalar ADB")
@@ -187,9 +186,15 @@ class FrameTools(ctk.CTkFrame):
             return self.service.download_and_install_adb(path, progress)
             
         def on_done(success):
-            self.install_win.destroy()
+            try:
+                self.install_win.destroy()
+            except Exception:
+                pass
+
             if success:
                 utils.refresh_adb_path()
+                self.refresh_adb_card_ui()
+                self.app.frames["tools"].refresh_feature_states()
                 mode = getattr(self, "_install_mode", "install")
                 if mode == "update":
                     msg = "¡ADB actualizado correctamente!"
@@ -197,12 +202,13 @@ class FrameTools(ctk.CTkFrame):
                     msg = "¡ADB reinstalado correctamente!"
                 else:
                     msg = "¡ADB instalado correctamente!"
-                self.app.show_toast(msg, color="#10B981")
+                try:
+                    self.app.show_toast(msg, color="#10B981")
+                except Exception:
+                    pass
                 utils.run_adb(["start-server"])
-                self.refresh_adb_card_ui()
-                self.app.frames["tools"].refresh_feature_states()
             else:
-                self.app.show_toast("Error en la instalación de red", color="#EF4444")
+                utils.show_alert(self.app, "Error", "Error en la instalación de red.", is_error=True)
                 
         utils.run_async(task, on_done, self.app)
 
@@ -243,7 +249,7 @@ class FrameTools(ctk.CTkFrame):
     @requires_device
     def scrcpy_panel(self):
         if not shutil.which("scrcpy"): 
-            self.app.show_toast("Error: No se encontró Scrcpy en el PATH", color="#EF4444")
+            utils.show_alert(self.app, "Error", "No se encontró Scrcpy en el PATH.", is_error=True)
             return
             
         win = ctk.CTkToplevel(self)
@@ -282,7 +288,7 @@ class FrameTools(ctk.CTkFrame):
             )
             if self.service.launch_scrcpy(cmd) is None:
                 try:
-                    self.app.show_toast("Error al iniciar scrcpy", color="#EF4444")
+                    utils.show_alert(self.app, "Error", "No se pudo iniciar scrcpy.", is_error=True)
                 except:
                     pass
             win.destroy()

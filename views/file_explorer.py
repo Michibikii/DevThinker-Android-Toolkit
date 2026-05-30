@@ -272,9 +272,9 @@ class FrameFileExplorer(ctk.CTkFrame):
         if utils.AskYesNo(self.app, "Confirmar", f"¿Eliminar '{f_name}' permanentemente?").get():
             def on_delete_done(res):
                 if res is not None and not str(res).strip():
-                    self.app.show_toast("Eliminado", color="#EF4444")
+                    utils.show_alert(self.app, "Advertencia", "El elemento fue eliminado.", is_error=False)
                 else:
-                    self.app.show_toast("Error o requiere permisos", color="#F59E0B")
+                    utils.show_alert(self.app, "Advertencia", "La operación requiere permisos o falló.", is_error=False)
                 self.load_files()
                 
             run_async(lambda: self.service.delete_entry(self.entry_path.get(), f_name), on_delete_done, self.app)
@@ -297,7 +297,7 @@ class FrameFileExplorer(ctk.CTkFrame):
                 self.app.show_toast("Copiado con éxito")
                 self.load_files()
             else:
-                self.app.show_toast("Error al copiar", color="#EF4444")
+                utils.show_alert(self.app, "Error", "No se pudo copiar el archivo.", is_error=True)
 
         run_async(lambda: self.service.copy_entry(self.entry_path.get(), entry.name, destination), callback, self.app)
 
@@ -312,7 +312,7 @@ class FrameFileExplorer(ctk.CTkFrame):
                 self.app.show_toast("Movido con éxito")
                 self.load_files()
             else:
-                self.app.show_toast("Error al mover", color="#EF4444")
+                utils.show_alert(self.app, "Error", "No se pudo mover el elemento.", is_error=True)
 
         run_async(lambda: self.service.move_entry(self.entry_path.get(), entry.name, destination), callback, self.app)
 
@@ -327,7 +327,7 @@ class FrameFileExplorer(ctk.CTkFrame):
                 self.app.show_toast("Renombrado con éxito")
                 self.load_files()
             else:
-                self.app.show_toast("Error al renombrar", color="#EF4444")
+                utils.show_alert(self.app, "Error", "No se pudo renombrar.", is_error=True)
 
         run_async(lambda: self.service.rename_entry(self.entry_path.get(), entry.name, new_name), callback, self.app)
 
@@ -342,7 +342,7 @@ class FrameFileExplorer(ctk.CTkFrame):
                 self.app.show_toast("Carpeta creada")
                 self.load_files()
             else:
-                self.app.show_toast("Error al crear carpeta", color="#EF4444")
+                utils.show_alert(self.app, "Error", "No se pudo crear la carpeta.", is_error=True)
 
         run_async(lambda: self.service.create_directory(self.entry_path.get(), folder_name), callback, self.app)
 
@@ -357,7 +357,7 @@ class FrameFileExplorer(ctk.CTkFrame):
                 if res is not None and "error" not in str(res).lower() and "failed" not in str(res).lower():
                     self.app.show_toast("¡Guardado con éxito!")
                 else:
-                    self.app.show_toast("Error al descargar", color="#EF4444")
+                    utils.show_alert(self.app, "Error", "No se pudo descargar el archivo.", is_error=True)
             run_async(lambda: self.service.pull_file(remote_path, local_path), callback, self.app)
 
     @requires_device
@@ -373,7 +373,7 @@ class FrameFileExplorer(ctk.CTkFrame):
                     self.app.show_toast("¡Subido con éxito!")
                     self.load_files()
                 else:
-                    self.app.show_toast("Error al subir", color="#EF4444")
+                    utils.show_alert(self.app, "Error", "No se pudo subir el archivo.", is_error=True)
             run_async(lambda: self.service.push_file(local_path, remote_path), callback, self.app)
 
     def enter_folder(self, folder_name):

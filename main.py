@@ -10,6 +10,7 @@ import utils
 from utils import ToastNotification, run_adb
 
 from core import AppState, frame_requires_device
+from infrastructure.config import ConfigManager
 from services import DeviceMonitorService
 from ui.app_shell import build_shell, render_menu, show_frame, sync_connection_ui
 
@@ -150,6 +151,7 @@ class DevThinkerApp(ctk.CTk):
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
         self.app_state = AppState()
+        self.app_state.set_recent_tabs(ConfigManager.load_config().get("recent_tabs", []))
         self.current_tab = "welcome"
 
         build_shell(self)
@@ -195,21 +197,32 @@ class DevThinkerApp(ctk.CTk):
     def _frame_is_enabled(self, name):
         return not self._frame_requires_device(name) or bool(self.current_device_id)
 
-    def show_frame(self, name):
+    def show_frame(self, name, record_recent=True):
         if not self._frame_is_enabled(name):
             return
-        show_frame(self, name)
+        show_frame(self, name, record_recent=record_recent)
+
+    def record_recent_tab(self, name):
+        if not self.app_state.record_recent_tab(name):
+            return
+
+        ConfigManager.save_config("recent_tabs", self.app_state.recent_tabs)
+        try:
+            if "welcome" in getattr(self, "frames", {}):
+                self.frames["welcome"].refresh_recent_options()
+        except Exception:
+            pass
 
     def disconnect_device(self):
         if not self.current_device_id:
             return
         try:
-            utils.debug_log(f"disconnect_device called for {self.current_device_id}")
+            utils.ui_log(f"disconnect_device called for {self.current_device_id}")
         except Exception:
             pass
 
         try:
-            utils.debug_log("Showing toast: Desconectando...")
+            utils.ui_log("Showing toast: Desconectando...")
         except Exception:
             pass
 
@@ -226,7 +239,7 @@ class DevThinkerApp(ctk.CTk):
                 self.frames["welcome"].refresh_state()
         except Exception:
             pass
-        self.show_frame("wireless")
+        self.show_frame("wireless", record_recent=False)
 
     def device_monitor_loop(self):
         while self.is_monitoring:
@@ -304,7 +317,12 @@ class DevThinkerApp(ctk.CTk):
     def _update_ui(self, name, sub1, sub2, bg_color, title_color, is_conn):
         try:
             try:
-                utils.debug_log(f"_update_ui called: name={name!r}, sub1={sub1!r}, sub2={sub2!r}, is_conn={is_conn}")
+                utils.ui_log(f"_update_ui called: name={name!r}, sub1={sub1!r}, sub2={sub2!r}, is_conn={is_conn}")
+            except Exception:
+                pass
+
+            try:
+                utils.ui_log(f"_update_ui is_conn={is_conn} current_tab={self.current_tab!r} name={name!r}")
             except Exception:
                 pass
 
@@ -317,11 +335,11 @@ class DevThinkerApp(ctk.CTk):
                 self.last_state = True
                 sync_connection_ui(self, True)
                 if self.current_tab in {"wireless", "welcome"}:
-                    self.show_frame("stats")
+                    self.show_frame("stats", record_recent=False)
             elif not is_conn and self.last_state:
                 self.last_state = False
                 sync_connection_ui(self, False)
-                self.show_frame("wireless")
+                self.show_frame("wireless", record_recent=False)
         except Exception:
             pass
 

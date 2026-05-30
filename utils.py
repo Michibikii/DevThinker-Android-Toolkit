@@ -29,10 +29,6 @@ def _write_log(filename: str, msg: str):
         pass
 
 
-def debug_log(msg: str):
-    _write_log("debug.log", msg)
-
-
 def crash_log(msg: str):
     _write_log("crash.log", msg)
 
@@ -41,8 +37,12 @@ def device_log(msg: str):
     _write_log("device.log", msg)
 
 
-def wireless_log(msg: str):
-    _write_log("wireless.log", msg)
+def connection_log(msg: str):
+    _write_log("connection.log", msg)
+
+
+def ui_log(msg: str):
+    _write_log("ui.log", msg)
 
 
 def adb_log(msg: str):

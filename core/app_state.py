@@ -16,6 +16,7 @@ class AppState:
     cached_cpu: str = "?"
     cached_battery: str = "?"
     bat_counter: int = 5
+    recent_tabs: list[str] = field(default_factory=list)
     device_state: dict = field(default_factory=dict)
 
     def reset_device(self):
@@ -23,6 +24,18 @@ class AppState:
         self.cached_dev_id = None
         self.device_state = {}
         self.bat_counter = 5
+
+    def set_recent_tabs(self, tabs):
+        self.recent_tabs = [tab for tab in tabs if isinstance(tab, str) and tab and tab != "welcome"]
+
+    def record_recent_tab(self, name, max_items=4):
+        if name == "welcome":
+            return False
+
+        self.recent_tabs = [tab for tab in self.recent_tabs if tab != name]
+        self.recent_tabs.insert(0, name)
+        self.recent_tabs = self.recent_tabs[:max_items]
+        return True
 
     def set_connected(self, device_id, full_name, market_name, ver, api, cpu, battery):
         self.current_device_id = device_id

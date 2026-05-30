@@ -60,19 +60,16 @@ class ToolTip:
             self.tip_window = None
 
 
-class ToastNotification(ctk.CTkToplevel):
+class ToastNotification(ctk.CTkFrame):
     def __init__(self, parent, message, color="#10B981"):
-        super().__init__(parent)
-        self.overrideredirect(True)
-        self.attributes("-topmost", True)
-
+        super().__init__(parent, fg_color=color, corner_radius=10)
         parent.update_idletasks()
         try:
             x = parent.winfo_rootx() + parent.winfo_width() - 320
             y = parent.winfo_rooty() + parent.winfo_height() - 70
-            self.geometry(f"300x50+{x}+{y}")
+            self.place(x=x, y=y, width=300, height=50)
         except:
-            self.geometry("300x50")
+            self.place(x=0, y=0, width=300, height=50)
 
         f = ctk.CTkFrame(self, fg_color=color, corner_radius=10)
         f.pack(fill="both", expand=True)

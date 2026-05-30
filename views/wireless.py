@@ -84,7 +84,7 @@ class FrameWireless(ctk.CTkFrame):
         threading.Thread(target=self._mdns_thread, daemon=True).start()
 
     def _mdns_thread(self):
-        self.app.adb_cmd(["mdns", "check"])
+        self.service.mdns_check()
         out = self.service.find_pairing_port(self.qr_name)
         if not out:
             self._end_process(self.btn_scan, "🔍 Buscar y Conectar", "La red local no responde. Verifica que la PC tenga Wi-Fi activado o desactiva VPNs.", False)
@@ -100,6 +100,10 @@ class FrameWireless(ctk.CTkFrame):
         
         pair_res = self.service.pair_with_qr(pairing_ip_port, self.qr_pass)
         if not pair_res or ("Failed" in pair_res or "error" in pair_res.lower()):
+            try:
+                utils.connection_log(f"wireless failed stage=pair pair_port={pairing_ip_port!r} result={pair_res!r}")
+            except Exception:
+                pass
             self._end_process(self.btn_scan, "🔍 Buscar y Conectar", f"El teléfono rechazó la vinculación. Intenta de nuevo.\nDetalle: {pair_res}", False)
             return
             
@@ -110,15 +114,23 @@ class FrameWireless(ctk.CTkFrame):
         
         if connect_ip_port:
             conn_res = self.service.connect(connect_ip_port)
-            try:
-                utils.wireless_log(f"connect result: {repr(conn_res)} for {connect_ip_port}")
-            except Exception:
-                pass
             if conn_res and "connected" in conn_res.lower():
+                try:
+                    utils.connection_log(f"wireless success pair_port={pairing_ip_port!r} connect_port={connect_ip_port!r}")
+                except Exception:
+                    pass
                 self._end_process(self.btn_scan, "🔍 Buscar y Conectar", f"El dispositivo se conectó exitosamente de forma inalámbrica en:\n{connect_ip_port}", True)
             else:
+                try:
+                    utils.connection_log(f"wireless failed stage=connect pair_port={pairing_ip_port!r} connect_port={connect_ip_port!r} result={conn_res!r}")
+                except Exception:
+                    pass
                 self._end_process(self.btn_scan, "🔍 Buscar y Conectar", f"Se encontró el puerto, pero ADB denegó la conexión final:\n{conn_res}", False)
         else:
+            try:
+                utils.connection_log(f"wireless failed stage=discover pair_port={pairing_ip_port!r} result='no connect port exposed'")
+            except Exception:
+                pass
             self._end_process(self.btn_scan, "🔍 Buscar y Conectar", "El dispositivo se vinculó con éxito, pero Android nunca expuso el puerto de conexión final.\nIntenta desactivar y reactivar la 'Depuración Inalámbrica' en el celular.", False)
 
     def setup_manual_tab(self):
@@ -168,11 +180,6 @@ class FrameWireless(ctk.CTkFrame):
             utils.run_async(lambda: self.service.connect(pair_addr), lambda res: self._post_connect_legacy(res), self.app)
 
     def _post_connect_legacy(self, res):
-        try:
-            utils.wireless_log(f"_post_connect_legacy res: {repr(res)}")
-        except Exception:
-            pass
-
         if res and "connected" in res.lower() and "fail" not in res.lower():
             self.app.show_toast("¡Conectado exitosamente!", color="#10B981")
         elif res and ("fail" in res.lower() or "cannot connect" in res.lower() or "error" in res.lower()):
@@ -183,7 +190,7 @@ class FrameWireless(ctk.CTkFrame):
         self._safe_after(0, lambda: self.btn_manual_connect.configure(text="Vincular / Conectar", state="normal"))
 
     def _manual_connect_thread(self, pair_addr, pair_code):
-        self.app.adb_cmd(["mdns", "check"]) 
+        self.service.mdns_check()
         pair_res = self.service.pair_with_qr(pair_addr, pair_code)
         
         if pair_res and ("Successfully paired" in pair_res or "Already paired" in pair_res or "successfully" in pair_res.lower()):
@@ -194,16 +201,29 @@ class FrameWireless(ctk.CTkFrame):
             
             if connect_ip_port:
                 conn_res = self.service.connect(connect_ip_port)
-                try:
-                    utils.wireless_log(f"manual connect result: {repr(conn_res)} for {connect_ip_port}")
-                except Exception:
-                    pass
                 if conn_res and "connected" in conn_res.lower():
+                    try:
+                        utils.connection_log(f"wireless success pair_port={pair_addr!r} connect_port={connect_ip_port!r}")
+                    except Exception:
+                        pass
                     self._end_process(self.btn_manual_connect, "Vincular / Conectar", f"¡Conexión inyectada automáticamente en {connect_ip_port}!", True)
                     return
+
+                try:
+                    utils.connection_log(f"wireless failed stage=connect pair_port={pair_addr!r} connect_port={connect_ip_port!r} result={conn_res!r}")
+                except Exception:
+                    pass
             
+            try:
+                utils.connection_log(f"wireless failed stage=discover pair_port={pair_addr!r} result='no connect port exposed'")
+            except Exception:
+                pass
             self._end_process(self.btn_manual_connect, "Vincular / Conectar", "Se vinculó correctamente, pero el router bloqueó el auto-descubrimiento.\nVe a Utilidades y conéctate usando el puerto principal manualmente.", False)
         else:
+            try:
+                utils.connection_log(f"wireless failed stage=pair pair_port={pair_addr!r} result={pair_res!r}")
+            except Exception:
+                pass
             self._end_process(self.btn_manual_connect, "Vincular / Conectar", f"Credenciales rechazadas por el teléfono:\n{pair_res}", False)
 
     def setup_legacy_tab(self):
@@ -241,12 +261,28 @@ class FrameWireless(ctk.CTkFrame):
             state = self.service.parse_usb_state(out)
 
             if state == "connected":
+                try:
+                    utils.connection_log("usb success state=connected")
+                except Exception:
+                    pass
                 self.app.show_toast("¡Dispositivo USB detectado y listo!", color="#10B981")
             elif state == "unauthorized":
+                try:
+                    utils.connection_log("usb failed state=unauthorized")
+                except Exception:
+                    pass
                 utils.ShowInfo(self.app, "Autorización Pendiente", "El dispositivo está conectado pero bloqueado.\n\nPor favor, enciende la pantalla de tu celular y presiona 'Permitir depuración USB'.", True)
             elif state == "offline":
+                try:
+                    utils.connection_log("usb failed state=offline")
+                except Exception:
+                    pass
                 self.app.show_toast("Dispositivo offline. Desconecta y reconecta el cable.", color="#F59E0B")
             else:
+                try:
+                    utils.connection_log(f"usb failed state={state!r}")
+                except Exception:
+                    pass
                 utils.ShowInfo(self.app, "No Detectado", "No se encontró ningún teléfono.\n\n1. Revisa el cable USB.\n2. Asegúrate de tener activada la 'Depuración USB' en tu celular.", True)
 
         utils.run_async(task, on_done, self.app)

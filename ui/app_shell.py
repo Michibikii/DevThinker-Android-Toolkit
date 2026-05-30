@@ -60,6 +60,13 @@ def render_menu(app):
     for widget in app.nav_frame.winfo_children():
         widget.destroy()
 
+    try:
+        import utils
+
+        utils.ui_log(f"render_menu current_tab={app.current_tab!r} connected={bool(app.current_device_id)}")
+    except Exception:
+        pass
+
     app.nav_btns = {}
     for item in visible_nav_items(bool(app.current_device_id)):
         text = item["text"]
@@ -88,13 +95,23 @@ def render_menu(app):
         app.nav_btns[app.current_tab].configure(fg_color="#1E293B", text_color="#38BDF8", font=("Segoe UI", 14, "bold"))
 
 
-def show_frame(app, name):
+def show_frame(app, name, record_recent=True):
     from core import frame_requires_device
 
     if frame_requires_device(name) and not app.current_device_id:
         return
 
+    try:
+        import utils
+
+        utils.ui_log(f"show_frame request name={name!r} record_recent={record_recent} connected={bool(app.current_device_id)}")
+    except Exception:
+        pass
+
     app.current_tab = name
+    if record_recent and hasattr(app, "record_recent_tab"):
+        app.record_recent_tab(name)
+
     for btn_name, btn in app.nav_btns.items():
         btn.configure(fg_color="transparent", text_color="#94A3B8", font=("Segoe UI", 14, "normal"))
     if name in app.nav_btns:
@@ -115,6 +132,13 @@ def show_frame(app, name):
 
 
 def sync_connection_ui(app, connected):
+    try:
+        import utils
+
+        utils.ui_log(f"sync_connection_ui connected={connected} current_tab={app.current_tab!r}")
+    except Exception:
+        pass
+
     if connected:
         app.lbl_sub2.pack_configure(pady=(2, 10))
         app.btn_disconnect.pack(fill="x", padx=15, pady=(0, 15))

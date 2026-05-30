@@ -11,11 +11,20 @@ except Exception:
     qrcode = None
 
 import utils
+import infrastructure.adb_client as adb_client
 
 
 class WirelessService:
     def __init__(self, adb_cmd):
         self.adb_cmd = adb_cmd
+
+    def _run_adb(self, args, timeout=15):
+        out = adb_client.run_adb(args, timeout=timeout)
+        try:
+            utils.adb_log(f"wireless adb {' '.join(args)} -> {repr(out)}")
+        except Exception:
+            pass
+        return out
 
     @staticmethod
     def build_qr_payload():
@@ -47,7 +56,7 @@ class WirelessService:
     def wait_for_connection_port(self, target_ip, timeout=12):
         start_time = time.time()
         while time.time() - start_time < timeout:
-            out = self.adb_cmd(["mdns", "services"])
+            out = self._run_adb(["mdns", "services"])
             if out:
                 for line in out.splitlines():
                     if "_adb-tls-connect" in line and target_ip in line:
@@ -58,7 +67,7 @@ class WirelessService:
         return None
 
     def find_pairing_port(self, qr_name):
-        out = self.adb_cmd(["mdns", "services"])
+        out = self._run_adb(["mdns", "services"])
         if not out:
             return None
 
@@ -70,19 +79,22 @@ class WirelessService:
         return None
 
     def pair_with_qr(self, pair_port, qr_pass):
-        return self.adb_cmd(["pair", pair_port, qr_pass])
+        return self._run_adb(["pair", pair_port, qr_pass])
 
     def connect(self, connect_port):
-        return self.adb_cmd(["connect", connect_port])
+        return self._run_adb(["connect", connect_port])
 
     def scan_usb(self):
-        out = self.adb_cmd(["devices"])
+        out = self._run_adb(["devices"])
         if out and out.count("\n") > 1:
             return out
 
-        self.adb_cmd(["kill-server"])
-        self.adb_cmd(["start-server"])
-        return self.adb_cmd(["devices"])
+        self._run_adb(["kill-server"])
+        self._run_adb(["start-server"])
+        return self._run_adb(["devices"])
+
+    def mdns_check(self):
+        return self._run_adb(["mdns", "check"])
 
     @staticmethod
     def parse_usb_state(adb_output):

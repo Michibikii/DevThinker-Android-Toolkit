@@ -28,11 +28,12 @@ Nota: La vista previa de imágenes sigue desactivada en el explorador de archivo
 Instalación mínima de dependencias (entorno virtual):
 
 ```powershell
+py -3.14 -m venv .venv
 & ".\.venv\Scripts\Activate.ps1"
-pip install customtkinter pillow
+pip install -r requirements.txt
 ```
 
-Si tu entorno no usa PowerShell, activa el venv según tu shell y ejecuta `pip install customtkinter pillow`.
+Si tu entorno no usa PowerShell, crea y activa el venv según tu shell y luego ejecuta `pip install -r requirements.txt`.
 
 📝 Notas Adicionales
 Para utilizar las funciones inalámbricas de forma fluida, se recomienda pausar momentáneamente cualquier VPN o bloqueador de anuncios activo (como Blokada o AdGuard) en el dispositivo móvil durante la vinculación.

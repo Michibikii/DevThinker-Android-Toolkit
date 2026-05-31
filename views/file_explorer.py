@@ -123,7 +123,7 @@ class FrameFileExplorer(ctk.CTkFrame):
 
         self.btn_up = ctk.CTkButton(nav_frame, text="⬆ Volver", width=90, height=40, font=("Segoe UI", 13, "bold"), fg_color="#475569", hover_color="#334155", command=self.go_up)
         self.btn_up.pack(side="left", padx=15, pady=15)
-        ToolTip(self.btn_up, "Subir un directorio hacia atrás.")
+        self.btn_up._tooltip = ToolTip(self.btn_up, "Subir un directorio hacia atrás.")
 
         self.entry_path = ctk.CTkEntry(nav_frame, font=("Consolas", 13), height=40, fg_color="#0B0F19", border_color="#252D40", text_color="#E2E8F0")
         self.entry_path.pack(side="left", fill="x", expand=True, padx=(0, 15))
@@ -132,15 +132,15 @@ class FrameFileExplorer(ctk.CTkFrame):
 
         self.btn_push = ctk.CTkButton(nav_frame, text="⬆️ Subir Archivo", width=130, height=40, font=("Segoe UI", 13, "bold"), fg_color="#10B981", hover_color="#059669", command=self.upload_file)
         self.btn_push.pack(side="right", padx=15, pady=15)
-        ToolTip(self.btn_push, "Envía un archivo desde tu PC a esta carpeta en el teléfono.")
+        self.btn_push._tooltip = ToolTip(self.btn_push, "Envía un archivo desde tu PC a esta carpeta en el teléfono.")
 
         self.btn_new_folder = ctk.CTkButton(nav_frame, text="📁 Nueva Carpeta", width=130, height=40, font=("Segoe UI", 13, "bold"), fg_color="#8B5CF6", hover_color="#7C3AED", command=self.create_folder)
         self.btn_new_folder.pack(side="right", padx=(0, 15), pady=15)
-        ToolTip(self.btn_new_folder, "Crea una carpeta nueva en la ruta actual.")
+        self.btn_new_folder._tooltip = ToolTip(self.btn_new_folder, "Crea una carpeta nueva en la ruta actual.")
 
         self.btn_refresh = ctk.CTkButton(nav_frame, text="🔄 Actualizar", width=110, height=40, font=("Segoe UI", 13, "bold"), fg_color="#38BDF8", hover_color="#0284C7", command=self.load_files)
         self.btn_refresh.pack(side="right", padx=(0, 15), pady=15)
-        ToolTip(self.btn_refresh, "Recarga la lista de archivos de la carpeta actual.")
+        self.btn_refresh._tooltip = ToolTip(self.btn_refresh, "Recarga la lista de archivos de la carpeta actual.")
 
         self.scroll_files = ctk.CTkScrollableFrame(self, fg_color="transparent")
         self.scroll_files.pack(fill="both", expand=True, pady=10)
@@ -236,36 +236,36 @@ class FrameFileExplorer(ctk.CTkFrame):
         
         btn_del = ctk.CTkButton(row, text="🗑", width=36, height=32, fg_color="#EF4444", hover_color="#DC2626", font=("Segoe UI Emoji", 16), command=lambda entry=entry: self.delete_file(entry))
         btn_del.grid(row=0, column=3, padx=8, pady=7, sticky="e")
-        ToolTip(btn_del, "Eliminar archivo")
+        btn_del._tooltip = ToolTip(btn_del, "Eliminar archivo")
 
         if f_type == '-':
             btn_copy = ctk.CTkButton(row, text="📄", width=36, height=32, fg_color="#38BDF8", hover_color="#0284C7", font=("Segoe UI Emoji", 16), command=lambda entry=entry: self.copy_entry(entry))
             btn_copy.grid(row=0, column=4, padx=5, pady=7, sticky="e")
-            ToolTip(btn_copy, "Copiar archivo")
+            btn_copy._tooltip = ToolTip(btn_copy, "Copiar archivo")
 
             btn_move = ctk.CTkButton(row, text="➡", width=36, height=32, fg_color="#F59E0B", hover_color="#D97706", font=("Segoe UI Emoji", 16), command=lambda entry=entry: self.move_entry(entry))
             btn_move.grid(row=0, column=5, padx=5, pady=7, sticky="e")
-            ToolTip(btn_move, "Mover archivo")
+            btn_move._tooltip = ToolTip(btn_move, "Mover archivo")
 
             btn_rename = ctk.CTkButton(row, text="✏", width=36, height=32, fg_color="#8B5CF6", hover_color="#7C3AED", font=("Segoe UI Emoji", 16), command=lambda entry=entry: self.rename_entry(entry))
             btn_rename.grid(row=0, column=6, padx=5, pady=7, sticky="e")
-            ToolTip(btn_rename, "Renombrar archivo")
+            btn_rename._tooltip = ToolTip(btn_rename, "Renombrar archivo")
 
             btn_ext = ctk.CTkButton(row, text="📥", width=36, height=32, fg_color="#38BDF8", hover_color="#0284C7", font=("Segoe UI Emoji", 16), command=action)
             btn_ext.grid(row=0, column=7, padx=5, pady=7, sticky="e")
-            ToolTip(btn_ext, "Descargar archivo")
+            btn_ext._tooltip = ToolTip(btn_ext, "Descargar archivo")
         else:
             btn_copy = ctk.CTkButton(row, text="📄", width=36, height=32, fg_color="#38BDF8", hover_color="#0284C7", font=("Segoe UI Emoji", 16), command=lambda entry=entry: self.copy_entry(entry))
             btn_copy.grid(row=0, column=4, padx=5, pady=7, sticky="e")
-            ToolTip(btn_copy, "Copiar carpeta")
+            btn_copy._tooltip = ToolTip(btn_copy, "Copiar carpeta")
 
             btn_move = ctk.CTkButton(row, text="➡", width=36, height=32, fg_color="#F59E0B", hover_color="#D97706", font=("Segoe UI Emoji", 16), command=lambda entry=entry: self.move_entry(entry))
             btn_move.grid(row=0, column=5, padx=5, pady=7, sticky="e")
-            ToolTip(btn_move, "Mover carpeta")
+            btn_move._tooltip = ToolTip(btn_move, "Mover carpeta")
 
             btn_rename = ctk.CTkButton(row, text="✏", width=36, height=32, fg_color="#8B5CF6", hover_color="#7C3AED", font=("Segoe UI Emoji", 16), command=lambda entry=entry: self.rename_entry(entry))
             btn_rename.grid(row=0, column=6, padx=5, pady=7, sticky="e")
-            ToolTip(btn_rename, "Renombrar carpeta")
+            btn_rename._tooltip = ToolTip(btn_rename, "Renombrar carpeta")
 
     def delete_file(self, entry: FileEntry):
         f_name = entry.name

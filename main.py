@@ -19,6 +19,11 @@ def global_exception_handler(exc_type, exc_value, exc_traceback):
     try:
         utils.crash_log(f"FATAL CRASH: {exc_type.__name__}: {exc_value}")
         utils.crash_log("".join(traceback.format_exception(exc_type, exc_value, exc_traceback)))
+        import tkinter.messagebox
+        tkinter.messagebox.showerror(
+            "Error Fatal", 
+            f"Ocurrió un error inesperado:\n{exc_type.__name__}: {exc_value}\n\nRevisa logs/crash.log para más detalles."
+        )
     except Exception:
         pass
 
@@ -334,8 +339,8 @@ class DevThinkerApp(ctk.CTk):
             if is_conn and not self.last_state:
                 self.last_state = True
                 sync_connection_ui(self, True)
-                if self.current_tab in {"wireless", "welcome"}:
-                    self.show_frame("stats", record_recent=False)
+                if self.current_tab == "wireless":
+                    self.show_frame("welcome", record_recent=False)
             elif not is_conn and self.last_state:
                 self.last_state = False
                 sync_connection_ui(self, False)

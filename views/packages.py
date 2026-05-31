@@ -18,11 +18,11 @@ class FramePackages(ctk.CTkFrame):
         
         self.btn_ref = ctk.CTkButton(c, text="🔄 Refrescar Lista", width=140, height=40, font=("Segoe UI", 13, "bold"), fg_color="#38BDF8", hover_color="#0284C7", command=self.refresh, text_color_disabled="#64748B")
         self.btn_ref.pack(side="left", padx=15, pady=15)
-        ToolTip(self.btn_ref, "Recarga la lista de aplicaciones instaladas.")
+        self.btn_ref._tooltip = ToolTip(self.btn_ref, "Recarga la lista de aplicaciones instaladas.")
         
         self.btn_install = ctk.CTkButton(c, text="📥 Instalar APK", width=140, height=40, font=("Segoe UI", 13, "bold"), fg_color="#10B981", hover_color="#059669", command=self.install_apk)
         self.btn_install.pack(side="left", padx=(0, 15), pady=15)
-        ToolTip(self.btn_install, "Selecciona e instala un archivo .apk desde la PC.")
+        self.btn_install._tooltip = ToolTip(self.btn_install, "Selecciona e instala un archivo .apk desde la PC.")
         
         self.lbl_status = ctk.CTkLabel(c, text="", font=("Segoe UI", 12), text_color="#94A3B8")
         self.lbl_status.pack(side="left", padx=10)
@@ -84,19 +84,19 @@ class FramePackages(ctk.CTkFrame):
         
         btn_clr = ctk.CTkButton(f, text="Limpiar Datos", width=105, height=32, font=("Segoe UI", 12, "bold"), fg_color="#F59E0B", hover_color="#D97706", command=lambda pkg_name=pkg: self.act(pkg_name, "limpiar"))
         btn_clr.pack(side="right", padx=8, pady=6)
-        ToolTip(btn_clr, "Borra caché y datos. Deja la app como recién instalada.")
+        btn_clr._tooltip = ToolTip(btn_clr, "Borra caché y datos. Deja la app como recién instalada.")
         
         btn_un = ctk.CTkButton(f, text="Desinstalar", width=85, height=32, font=("Segoe UI", 12, "bold"), fg_color="#EF4444", hover_color="#DC2626", command=lambda pkg_name=pkg: self.act(pkg_name, "desinstalar"))
         btn_un.pack(side="right", padx=5, pady=6)
-        ToolTip(btn_un, "Elimina la app permanentemente.")
+        btn_un._tooltip = ToolTip(btn_un, "Elimina la app permanentemente.")
 
         btn_stop = ctk.CTkButton(f, text="⏹ Detener", width=80, height=32, font=("Segoe UI", 12, "bold"), fg_color="#8B5CF6", hover_color="#7C3AED", command=lambda pkg_name=pkg: self.act(pkg_name, "forzar"))
         btn_stop.pack(side="right", padx=5, pady=6)
-        ToolTip(btn_stop, "Fuerza el cierre de la aplicación.")
+        btn_stop._tooltip = ToolTip(btn_stop, "Fuerza el cierre de la aplicación.")
 
         btn_launch = ctk.CTkButton(f, text="▶ Abrir", width=70, height=32, font=("Segoe UI", 12, "bold"), fg_color="#38BDF8", hover_color="#0284C7", command=lambda pkg_name=pkg: self.act(pkg_name, "abrir"))
         btn_launch.pack(side="right", padx=8, pady=6)
-        ToolTip(btn_launch, "Lanza la aplicación en el dispositivo.")
+        btn_launch._tooltip = ToolTip(btn_launch, "Lanza la aplicación en el dispositivo.")
         
         self.row_widgets.append({"frame": f, "pkg": pkg, "name": app_name})
 

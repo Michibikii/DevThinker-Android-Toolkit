@@ -26,15 +26,20 @@ class ToolTip:
             self._bind_widget(child)
 
     def schedule(self, event=None):
-        self.unschedule()
+        if self.id is not None or self.tip_window is not None:
+            return
         self.id = self.widget.after(self.delay, self.show)
 
     def unschedule(self):
         if self.id:
-            self.widget.after_cancel(self.id)
+            try:
+                self.widget.after_cancel(self.id)
+            except:
+                pass
             self.id = None
 
     def show(self):
+        self.id = None
         if self.tip_window or not self.text:
             return
         try:
@@ -51,6 +56,17 @@ class ToolTip:
             self.hide()
 
     def hide(self, event=None):
+        if event and hasattr(event, "x_root") and hasattr(event, "y_root"):
+            try:
+                x, y = event.x_root, event.y_root
+                rx = self.widget.winfo_rootx()
+                ry = self.widget.winfo_rooty()
+                rw = self.widget.winfo_width()
+                rh = self.widget.winfo_height()
+                if rx <= x <= rx + rw and ry <= y <= ry + rh:
+                    return
+            except:
+                pass
         self.unschedule()
         if self.tip_window:
             try:
@@ -61,17 +77,47 @@ class ToolTip:
 
 
 class ToastNotification(ctk.CTkFrame):
+    _active_toasts = []
+
     def __init__(self, parent, message, color="#10B981"):
         super().__init__(parent, fg_color=color, corner_radius=10)
-        parent.update_idletasks()
-        try:
-            x = max(parent.winfo_width() - 320, 10)
-            y = max(parent.winfo_height() - 70, 10)
-            self.place(x=x, y=y, width=300, height=50)
-        except:
-            self.place(x=0, y=0, width=300, height=50)
+        self.parent_win = parent
+        
+        ToastNotification._active_toasts = [t for t in ToastNotification._active_toasts if t.winfo_exists()]
+        ToastNotification._active_toasts.append(self)
+        ToastNotification.reposition_all()
 
         f = ctk.CTkFrame(self, fg_color=color, corner_radius=10)
         f.pack(fill="both", expand=True)
         ctk.CTkLabel(f, text=message, font=("Segoe UI", 13, "bold"), text_color="white").pack(expand=True)
-        self.after(2500, self.destroy)
+        self.after(2500, self.close)
+
+    def close(self):
+        if self in ToastNotification._active_toasts:
+            ToastNotification._active_toasts.remove(self)
+        try:
+            self.destroy()
+        except:
+            pass
+        ToastNotification.reposition_all()
+
+    @classmethod
+    def reposition_all(cls):
+        cls._active_toasts = [t for t in cls._active_toasts if t.winfo_exists()]
+        if not cls._active_toasts:
+            return
+            
+        parent = cls._active_toasts[0].parent_win
+        try:
+            pw = parent.winfo_width()
+            ph = parent.winfo_height()
+        except:
+            pw, ph = 800, 600
+
+        base_y = ph - 70
+        for i, toast in enumerate(reversed(cls._active_toasts)):
+            try:
+                toast.place(x=max(pw - 320, 10), y=max(base_y - (i * 60), 10), width=300, height=50)
+            except:
+                pass
+

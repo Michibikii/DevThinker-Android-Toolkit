@@ -25,7 +25,7 @@ class FrameAnalyzer(ctk.CTkFrame):
         
         btn = ctk.CTkButton(self, text="⚡ Analizar Traza", width=160, height=40, font=("Segoe UI", 13, "bold"), fg_color="#38BDF8", hover_color="#0284C7", command=self.analyze)
         btn.pack(anchor="w", pady=10)
-        ToolTip(btn, "Escanea el texto en busca de 'FATAL EXCEPTION' y explica la causa de forma sencilla.")
+
         
         ctk.CTkLabel(self, text="Reporte de Análisis:", font=("Segoe UI", 15, "bold"), text_color="#F8FAFC").pack(anchor="w", pady=(20, 8))
         self.res = ctk.CTkTextbox(self, fg_color="#0B0F19", text_color="#E2E8F0", border_width=1, border_color="#252D40", corner_radius=12, font=("Consolas", 13))

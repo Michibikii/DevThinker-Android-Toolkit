@@ -19,11 +19,11 @@ class FrameDeviceStats(ctk.CTkFrame):
         
         self.btn_toggle = ctk.CTkButton(c, text="▶ Iniciar Monitor", width=160, height=40, fg_color="#10B981", hover_color="#059669", font=("Segoe UI", 13, "bold"), command=self.toggle_monitor)
         self.btn_toggle.pack(side="left", padx=15, pady=15)
-        ToolTip(self.btn_toggle, "Inicia o detiene la lectura en tiempo real del hardware del teléfono.")
+
 
         self.btn_clear = ctk.CTkButton(c, text="🧹 Limpiar", width=110, height=40, font=("Segoe UI", 13, "bold"), fg_color="#475569", hover_color="#334155", command=self.clear_monitor)
         self.btn_clear.pack(side="left", padx=(0, 15), pady=15)
-        ToolTip(self.btn_clear, "Detiene el monitor y limpia los gráficos y registros de la pantalla.")
+
 
         self.grid_cards = ctk.CTkFrame(self, fg_color="transparent")
         self.grid_cards.pack(fill="x", pady=15)

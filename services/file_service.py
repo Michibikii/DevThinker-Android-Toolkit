@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 import os
 import posixpath
+import tempfile
+import uuid
 
 
 @dataclass(frozen=True)
@@ -57,6 +59,10 @@ class FileExplorerService:
         return os.path.splitext(filename)[1].lower() in {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif"}
 
     @staticmethod
+    def is_text_file(filename):
+        return os.path.splitext(filename)[1].lower() in {".txt", ".xml", ".json", ".log", ".ini", ".prop", ".csv", ".html", ".md", ".py"}
+
+    @staticmethod
     def can_go_up(path):
         normalized = FileExplorerService.normalize_path(path)
         return normalized not in ["/", "/sdcard/"]
@@ -103,3 +109,15 @@ class FileExplorerService:
         if parent == "//":
             parent = "/"
         return parent
+
+    def read_text_file(self, remote_path):
+        return self.adb_cmd(["shell", "cat", remote_path])
+
+    def pull_temp_file(self, remote_path, ext=".tmp"):
+        temp_dir = tempfile.gettempdir()
+        temp_name = f"devthinker_{uuid.uuid4().hex}{ext}"
+        local_path = os.path.join(temp_dir, temp_name)
+        res = self.pull_file(remote_path, local_path)
+        if res is not None and "error" not in str(res).lower() and os.path.exists(local_path):
+            return local_path
+        return None

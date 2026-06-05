@@ -11,11 +11,12 @@ from views import (
     FrameTools,
     FrameWireless,
     FrameWelcome,
+    FrameHardwareInfo,
 )
 
 
 def build_shell(app):
-    app.sidebar = ctk.CTkFrame(app, width=260, corner_radius=0, fg_color="#111522")
+    app.sidebar = ctk.CTkFrame(app, corner_radius=0, fg_color="#111522")
     app.sidebar.grid(row=0, column=0, sticky="nsew")
 
     ctk.CTkLabel(app.sidebar, text="🧠 DevThinker", font=("Segoe UI", 26, "bold"), text_color="#E2E8F0").pack(pady=(40, 25))
@@ -34,7 +35,7 @@ def build_shell(app):
 
     app.btn_disconnect = ctk.CTkButton(app.info_card, text="Desconectar", fg_color="#EF4444", hover_color="#DC2626", height=28, font=("Segoe UI", 12, "bold"), command=app.disconnect_device)
 
-    app.nav_frame = ctk.CTkFrame(app.sidebar, fg_color="transparent")
+    app.nav_frame = ctk.CTkScrollableFrame(app.sidebar, fg_color="transparent")
     app.nav_frame.pack(fill="both", expand=True)
     app.nav_btns = {}
 
@@ -49,6 +50,7 @@ def build_shell(app):
         "analyze": FrameAnalyzer(app.container),
         "files": FrameFileExplorer(app.container, app),
         "stats": FrameDeviceStats(app.container, app),
+        "hardware": FrameHardwareInfo(app.container, app),
         "wireless": FrameWireless(app.container, app),
         "packages": FramePackages(app.container, app),
         "terminal": FrameTerminal(app.container, app),
@@ -126,6 +128,8 @@ def show_frame(app, name, record_recent=True):
         app.frames["tools"].refresh_adb_card_ui()
     elif name == "files" and app.current_device_id:
         app.frames["files"].load_files()
+    elif name == "hardware" and app.current_device_id:
+        app.frames["hardware"].load_data()
     elif name == "packages" and app.current_device_id:
         if not getattr(app.frames["packages"], "items", None):
             app.frames["packages"].refresh()

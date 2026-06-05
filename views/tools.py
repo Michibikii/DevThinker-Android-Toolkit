@@ -51,8 +51,6 @@ class FrameTools(ctk.CTkFrame):
         l2.bind("<Button-1>", trigger)
         btn = ctk.CTkButton(f, text="Ejecutar", height=38, font=("Segoe UI", 13, "bold"), fg_color="#38BDF8", hover_color="#0284C7", command=trigger)
         btn.pack(fill="x", padx=20, pady=(0,20))
-        btn._tooltip = ToolTip(btn, tip)
-        f._tooltip = ToolTip(f, tip)
         self.feature_cards.append((f, l1, l2, btn, needs_device))
         self.refresh_feature_states()
 
@@ -98,20 +96,16 @@ class FrameTools(ctk.CTkFrame):
         if not utils.ADB_PATH or not os.path.exists(utils.ADB_PATH):
             btn_inst = ctk.CTkButton(self.adb_btn_frame, text="📥 Instalar ADB", height=45, font=("Segoe UI", 14, "bold"), fg_color="#10B981", hover_color="#059669", command=lambda: self.prompt_install("install"))
             btn_inst.pack(fill="x", expand=True)
-            btn_inst._tooltip = ToolTip(btn_inst, "Descarga e instala los binarios oficiales para hacer funcionar la app.")
             self.app.adb_update_available = False
         else:
             btn_restart = ctk.CTkButton(self.adb_btn_frame, text="Reiniciar", width=110, height=40, font=("Segoe UI", 13, "bold"), fg_color="#8B5CF6", hover_color="#7C3AED", command=self.kill_adb)
             btn_restart.pack(side="left", padx=(0,8))
-            btn_restart._tooltip = ToolTip(btn_restart, "Mata y reinicia el servidor ADB de fondo. Úsalo si falla la conexión.")
-
+            
             btn_re = ctk.CTkButton(self.adb_btn_frame, text="Reinstalar", width=110, height=40, font=("Segoe UI", 13, "bold"), fg_color="#F59E0B", hover_color="#D97706", command=lambda: self.prompt_install("reinstall"))
             btn_re.pack(side="left", padx=(0,8))
-            btn_re._tooltip = ToolTip(btn_re, "Vuelve a descargar los binarios de ADB.")
             
             btn_un = ctk.CTkButton(self.adb_btn_frame, text="Desinstalar", width=110, height=40, font=("Segoe UI", 13, "bold"), fg_color="#EF4444", hover_color="#DC2626", command=self.uninstall_adb)
             btn_un.pack(side="left", padx=(0,15))
-            btn_un._tooltip = ToolTip(btn_un, "Elimina ADB de tu PC.")
             
             self.btn_upd = ctk.CTkButton(self.adb_btn_frame, text="Buscando actualizaciones...", height=40, font=("Segoe UI", 13, "bold"), state="disabled", fg_color="#1E293B", text_color_disabled="#64748B")
             self.btn_upd.pack(side="left", fill="x", expand=True)
@@ -125,7 +119,6 @@ class FrameTools(ctk.CTkFrame):
         has_update, new_ver = res
         if has_update:
             self.btn_upd.configure(text="Actualización Disponible", fg_color="#38BDF8", hover_color="#0284C7", state="normal", text_color="#0B0F19", command=self.prompt_install)
-            self.btn_upd._tooltip = ToolTip(self.btn_upd, "Una versión oficial más reciente está lista para descargar.")
             self.app.adb_update_available = True
             try:
                 self.btn_upd.configure(command=lambda: self.prompt_install("update"))

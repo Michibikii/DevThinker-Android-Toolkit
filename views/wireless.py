@@ -65,7 +65,7 @@ class FrameWireless(ctk.CTkFrame):
         
         self.btn_scan = ctk.CTkButton(f_content, text="🔍 Buscar y Conectar", font=("Segoe UI", 14, "bold"), fg_color="#10B981", hover_color="#059669", height=45, width=220, command=self.scan_mdns, text_color_disabled="#94A3B8")
         self.btn_scan.pack(pady=20)
-        ToolTip(self.btn_scan, "Busca el dispositivo en la red Wi-Fi y maneja ambos puertos automáticamente.")
+
         
         self.after(50, self.load_qr)
 
@@ -243,7 +243,7 @@ class FrameWireless(ctk.CTkFrame):
 
         self.btn_usb_connect = ctk.CTkButton(f_center, text="Buscar Dispositivo USB", font=("Segoe UI", 14, "bold"), height=45, width=220, fg_color="#8B5CF6", hover_color="#7C3AED", command=self.conectar_usb_directo)
         self.btn_usb_connect.pack()
-        ToolTip(self.btn_usb_connect, "Fuerza la detección del teléfono conectado por cable.")
+
 
     def conectar_usb_directo(self):
         self.btn_usb_connect.configure(text="⏳ Buscando...", state="disabled")

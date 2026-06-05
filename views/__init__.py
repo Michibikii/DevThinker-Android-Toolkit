@@ -7,3 +7,4 @@ from .welcome import FrameWelcome
 from .packages import FramePackages
 from .tools import FrameTools
 from .terminal import FrameTerminal
+from .hardware_info import FrameHardwareInfo

@@ -23,7 +23,7 @@ Asegúrate de tener **Python 3.8 o superior** instalado en tu sistema.
 🛠️ Tecnologías Utilizadas
 Python 3, CustomTkinter (Interfaz Gráfica), ADB (Android Debug Bridge)
 
-Nota: La vista previa de imágenes sigue desactivada en el explorador de archivos, pero el emparejamiento por QR vuelve a usar la librería Pillow para mostrar la imagen del código QR dentro de la app.
+Nota: La vista previa de archivos e imágenes está completamente funcional dentro del explorador de archivos. También, el emparejamiento por QR usa la librería Pillow para mostrar la imagen del código QR dentro de la app.
 
 Instalación mínima de dependencias (entorno virtual):
 

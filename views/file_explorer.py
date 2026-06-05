@@ -1,8 +1,10 @@
 import customtkinter as ctk
 import posixpath
+import os
 from tkinter import filedialog
+from PIL import Image
 import utils
-from utils import AskString, ToolTip, requires_device, run_async
+from utils import AskString, ToolTip, requires_device, run_async, center_toplevel
 from services import FileExplorerService, FileEntry
 
 
@@ -108,6 +110,41 @@ class RemoteFolderPicker(ctk.CTkToplevel):
     def get(self):
         return self.result
 
+class FilePreviewer(ctk.CTkToplevel):
+    def __init__(self, parent, title, content_type, content_data):
+        import tkinter as tk
+        super().__init__(parent)
+        self.title(f"Vista Previa - {title}")
+        self.attributes("-topmost", True)
+        self.transient(parent)
+        self.geometry("700x500")
+        self.minsize(400, 300)
+        center_toplevel(self, parent, 700, 500)
+
+        main_frame = ctk.CTkFrame(self, fg_color="transparent")
+        main_frame.pack(fill="both", expand=True, padx=20, pady=20)
+
+        if content_type == "text":
+            txt = ctk.CTkTextbox(main_frame, font=("Consolas", 13), fg_color="#0B0F19", text_color="#E2E8F0", border_width=1, border_color="#252D40")
+            txt.pack(fill="both", expand=True)
+            txt.insert("1.0", content_data)
+            txt.configure(state="disabled")
+        elif content_type == "image":
+            try:
+                img = Image.open(content_data)
+                max_size = (660, 460)
+                img.thumbnail(max_size, Image.Resampling.LANCZOS)
+                ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(img.width, img.height))
+                lbl = ctk.CTkLabel(main_frame, text="", image=ctk_img)
+                lbl.pack(expand=True)
+            except Exception as e:
+                ctk.CTkLabel(main_frame, text=f"Error cargando imagen:\n{str(e)}", text_color="#EF4444").pack(expand=True)
+        
+        btn_close = ctk.CTkButton(self, text="Cerrar", width=120, height=36, font=("Segoe UI", 12, "bold"), fg_color="#475569", hover_color="#334155", command=self.destroy)
+        btn_close.pack(pady=(0, 20))
+        self.bind("<Escape>", lambda e: self.destroy())
+        self.focus()
+
 class FrameFileExplorer(ctk.CTkFrame):
     def __init__(self, parent, app):
         super().__init__(parent, fg_color="transparent")
@@ -123,7 +160,7 @@ class FrameFileExplorer(ctk.CTkFrame):
 
         self.btn_up = ctk.CTkButton(nav_frame, text="⬆ Volver", width=90, height=40, font=("Segoe UI", 13, "bold"), fg_color="#475569", hover_color="#334155", command=self.go_up)
         self.btn_up.pack(side="left", padx=15, pady=15)
-        self.btn_up._tooltip = ToolTip(self.btn_up, "Subir un directorio hacia atrás.")
+
 
         self.entry_path = ctk.CTkEntry(nav_frame, font=("Consolas", 13), height=40, fg_color="#0B0F19", border_color="#252D40", text_color="#E2E8F0")
         self.entry_path.pack(side="left", fill="x", expand=True, padx=(0, 15))
@@ -132,15 +169,15 @@ class FrameFileExplorer(ctk.CTkFrame):
 
         self.btn_push = ctk.CTkButton(nav_frame, text="⬆️ Subir Archivo", width=130, height=40, font=("Segoe UI", 13, "bold"), fg_color="#10B981", hover_color="#059669", command=self.upload_file)
         self.btn_push.pack(side="right", padx=15, pady=15)
-        self.btn_push._tooltip = ToolTip(self.btn_push, "Envía un archivo desde tu PC a esta carpeta en el teléfono.")
+
 
         self.btn_new_folder = ctk.CTkButton(nav_frame, text="📁 Nueva Carpeta", width=130, height=40, font=("Segoe UI", 13, "bold"), fg_color="#8B5CF6", hover_color="#7C3AED", command=self.create_folder)
         self.btn_new_folder.pack(side="right", padx=(0, 15), pady=15)
-        self.btn_new_folder._tooltip = ToolTip(self.btn_new_folder, "Crea una carpeta nueva en la ruta actual.")
+
 
         self.btn_refresh = ctk.CTkButton(nav_frame, text="🔄 Actualizar", width=110, height=40, font=("Segoe UI", 13, "bold"), fg_color="#38BDF8", hover_color="#0284C7", command=self.load_files)
         self.btn_refresh.pack(side="right", padx=(0, 15), pady=15)
-        self.btn_refresh._tooltip = ToolTip(self.btn_refresh, "Recarga la lista de archivos de la carpeta actual.")
+
 
         self.scroll_files = ctk.CTkScrollableFrame(self, fg_color="transparent")
         self.scroll_files.pack(fill="both", expand=True, pady=10)
@@ -205,6 +242,9 @@ class FrameFileExplorer(ctk.CTkFrame):
     def is_image(self, filename):
         return self.service.is_image_file(filename)
 
+    def is_text(self, filename):
+        return self.service.is_text_file(filename)
+
     def create_file_row(self, entry: FileEntry):
         f_name = entry.name
         f_type = 'd' if entry.is_dir else '-'
@@ -251,8 +291,15 @@ class FrameFileExplorer(ctk.CTkFrame):
             btn_rename.grid(row=0, column=6, padx=5, pady=7, sticky="e")
             btn_rename._tooltip = ToolTip(btn_rename, "Renombrar archivo")
 
+            col_idx = 7
+            if self.is_image(f_name) or self.is_text(f_name):
+                btn_preview = ctk.CTkButton(row, text="👁️", width=36, height=32, fg_color="#10B981", hover_color="#059669", font=("Segoe UI Emoji", 16), command=lambda entry=entry: self.preview_file(entry))
+                btn_preview.grid(row=0, column=col_idx, padx=5, pady=7, sticky="e")
+                btn_preview._tooltip = ToolTip(btn_preview, "Vista previa")
+                col_idx += 1
+
             btn_ext = ctk.CTkButton(row, text="📥", width=36, height=32, fg_color="#38BDF8", hover_color="#0284C7", font=("Segoe UI Emoji", 16), command=action)
-            btn_ext.grid(row=0, column=7, padx=5, pady=7, sticky="e")
+            btn_ext.grid(row=0, column=col_idx, padx=5, pady=7, sticky="e")
             btn_ext._tooltip = ToolTip(btn_ext, "Descargar archivo")
         else:
             btn_copy = ctk.CTkButton(row, text="📄", width=36, height=32, fg_color="#38BDF8", hover_color="#0284C7", font=("Segoe UI Emoji", 16), command=lambda entry=entry: self.copy_entry(entry))
@@ -285,6 +332,39 @@ class FrameFileExplorer(ctk.CTkFrame):
     def _pick_remote_folder(self, title):
         picker = RemoteFolderPicker(self.app, self.service, self.entry_path.get(), title=title)
         return picker.get()
+
+    @requires_device
+    def preview_file(self, entry: FileEntry):
+        remote_path = posixpath.join(self.entry_path.get(), entry.name)
+        is_img = self.is_image(entry.name)
+        is_txt = self.is_text(entry.name)
+        
+        if not is_img and not is_txt:
+            utils.show_alert(self.app, "Aviso", "No se puede previsualizar este tipo de archivo.", is_error=True)
+            return
+
+        self.app.show_toast(f"Cargando {entry.name}...", color="#38BDF8")
+
+        def fetch_task():
+            if is_img:
+                ext = os.path.splitext(entry.name)[1]
+                return "image", self.service.pull_temp_file(remote_path, ext)
+            else:
+                return "text", self.service.read_text_file(remote_path)
+
+        def callback(res):
+            if res is None:
+                utils.show_alert(self.app, "Error", "No se pudo cargar el archivo.", is_error=True)
+                return
+            
+            c_type, c_data = res
+            if not c_data:
+                utils.show_alert(self.app, "Error", "El archivo está vacío o no se pudo leer.", is_error=True)
+                return
+                
+            FilePreviewer(self.app, entry.name, c_type, c_data)
+
+        run_async(fetch_task, callback, self.app)
 
     @requires_device
     def copy_entry(self, entry: FileEntry):

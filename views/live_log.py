@@ -15,29 +15,24 @@ class FrameLiveLog(ctk.CTkFrame):
         ctk.CTkLabel(self, text="Logcat en Vivo", font=("Segoe UI", 24, "bold"), text_color="#F8FAFC").pack(anchor="w", pady=(0, 5))
         ctk.CTkLabel(self, text="Ve todo lo que pasa en tu teléfono en tiempo real.", font=("Segoe UI", 13), text_color="#94A3B8").pack(anchor="w", pady=(0, 15))
         
-        c = ctk.CTkFrame(self, fg_color="#181D2B", corner_radius=12, border_width=1, border_color="#252D40")
-        c.pack(fill="x", pady=5)
+        toolbar = ctk.CTkFrame(self, fg_color="#181D2B", corner_radius=12, border_width=1, border_color="#252D40")
+        toolbar.pack(fill="x", pady=5)
         
-        self.btn_toggle = ctk.CTkButton(c, text="▶ Iniciar", width=120, height=40, font=("Segoe UI", 13, "bold"), fg_color="#10B981", hover_color="#059669", command=self.toggle)
+        self.btn_toggle = ctk.CTkButton(toolbar, text="▶ Iniciar Lectura", width=160, height=40, font=("Segoe UI", 13, "bold"), fg_color="#10B981", hover_color="#059669", command=self.toggle)
         self.btn_toggle.pack(side="left", padx=15, pady=15)
-        ToolTip(self.btn_toggle, "Empieza a leer el flujo de registros del sistema del teléfono.")
         
-        btn_clear = ctk.CTkButton(c, text="🧹 Limpiar", width=110, height=40, font=("Segoe UI", 13, "bold"), fg_color="#F59E0B", hover_color="#D97706", command=self.clear)
-        btn_clear.pack(side="left", padx=5)
-        ToolTip(btn_clear, "Limpia la pantalla y el historial interno del teléfono.")
+        btn_clear = ctk.CTkButton(toolbar, text="🧹 Limpiar", width=120, height=40, font=("Segoe UI", 13, "bold"), fg_color="#F59E0B", hover_color="#D97706", command=self.clear)
+        btn_clear.pack(side="left", padx=(0, 15), pady=15)
         
-        btn_copy = ctk.CTkButton(c, text="📋 Copiar", width=110, height=40, font=("Segoe UI", 13, "bold"), fg_color="#38BDF8", hover_color="#0284C7", command=self.copy_all)
-        btn_copy.pack(side="left", padx=5)
-        ToolTip(btn_copy, "Copia todo el texto al portapapeles (Pégalo en Análisis de Errores).")
+        btn_copy = ctk.CTkButton(toolbar, text="📋 Copiar", width=110, height=40, font=("Segoe UI", 13, "bold"), fg_color="#64748B", hover_color="#475569", command=self.copy_all)
+        btn_copy.pack(side="left", padx=(0, 15), pady=15)
         
-        self.chk_errors = ctk.CTkCheckBox(c, text="Solo Errores", font=("Segoe UI", 12), text_color="#E2E8F0", fg_color="#38BDF8", hover_color="#0284C7", onvalue=True, offvalue=False)
-        self.chk_errors.pack(side="right", padx=15)
+        self.chk_errors = ctk.CTkCheckBox(toolbar, text="Solo Errores/Crashes", font=("Segoe UI", 13, "bold"), text_color="#EF4444", fg_color="#EF4444", hover_color="#DC2626", border_color="#EF4444")
+        self.chk_errors.pack(side="left", padx=10, pady=15)
         self.chk_errors.select()
-        ToolTip(self.chk_errors, "Recomendado: Oculta información irrelevante, muestra solo Crashes y Advertencias.")
         
-        self.entry_filter = ctk.CTkEntry(c, placeholder_text="Filtro (ej. instagram)", width=180, height=40, font=("Segoe UI", 12), fg_color="#0B0F19", border_color="#252D40", text_color="#F8FAFC")
-        self.entry_filter.pack(side="right", padx=5)
-        ToolTip(self.entry_filter, "Muestra solo las líneas que contienen esta palabra.")
+        self.entry_filter = ctk.CTkEntry(toolbar, placeholder_text="Filtrar por palabra...", width=200, height=40, font=("Segoe UI", 12), fg_color="#0B0F19", border_color="#252D40", text_color="#F8FAFC")
+        self.entry_filter.pack(side="right", padx=15, pady=15)
 
         self.txt_log = ctk.CTkTextbox(self, font=("Consolas", 12), text_color="#E2E8F0", fg_color="#0B0F19", border_width=1, border_color="#252D40", corner_radius=12)
         self.txt_log.pack(fill="both", expand=True, pady=15)

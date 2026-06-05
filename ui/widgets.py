@@ -16,14 +16,15 @@ class ToolTip:
         self.delay = delay
         self.tip_window = None
         self.id = None
-        self._bind_widget(widget)
-
-    def _bind_widget(self, widget):
-        widget.bind("<Enter>", self.schedule, add="+")
-        widget.bind("<Leave>", self.hide, add="+")
-        widget.bind("<ButtonPress>", self.hide, add="+")
-        for child in widget.winfo_children():
-            self._bind_widget(child)
+        self._check_id = None
+        
+        self.widget.bind("<Enter>", self.schedule, add="+")
+        self.widget.bind("<Leave>", self.hide, add="+")
+        self.widget.bind("<ButtonPress>", self.hide, add="+")
+        for child in self.widget.winfo_children():
+            child.bind("<Enter>", self.schedule, add="+")
+            child.bind("<Leave>", self.hide, add="+")
+            child.bind("<ButtonPress>", self.hide, add="+")
 
     def schedule(self, event=None):
         if self.id is not None or self.tip_window is not None:
@@ -37,36 +38,68 @@ class ToolTip:
             except:
                 pass
             self.id = None
+        if self._check_id:
+            try:
+                self.widget.after_cancel(self._check_id)
+            except:
+                pass
+            self._check_id = None
 
     def show(self):
         self.id = None
         if self.tip_window or not self.text:
             return
         try:
+            import tkinter as tk
             x = self.widget.winfo_rootx() + 20
             y = self.widget.winfo_rooty() + self.widget.winfo_height() + 10
-            self.tip_window = ctk.CTkToplevel(self.widget)
+            
+            self.tip_window = tk.Toplevel(self.widget)
             self.tip_window.wm_overrideredirect(True)
             self.tip_window.wm_geometry(f"+{x}+{y}")
             self.tip_window.attributes('-topmost', True)
-            self.tip_window.lift()
-            label = ctk.CTkLabel(self.tip_window, text=self.text, justify='left', fg_color="#181D2B", text_color="#F8FAFC", border_width=1, border_color="#252D40", corner_radius=6, font=("Segoe UI", 11))
+            
+            display_text = self.text + "   "
+            label = tk.Label(self.tip_window, text=display_text, justify='left',
+                             background="#181D2B", foreground="#F8FAFC",
+                             font=("Segoe UI", 10), borderwidth=1, relief="solid",
+                             highlightbackground="#252D40", highlightthickness=1)
             label.pack(ipadx=8, ipady=4)
+            self.tip_window.update_idletasks()
+            
+            self._check_id = self.widget.after(100, self.check_hover)
         except:
             self.hide()
 
+    def check_hover(self):
+        try:
+            px = self.widget.winfo_pointerx()
+            py = self.widget.winfo_pointery()
+            rx = self.widget.winfo_rootx()
+            ry = self.widget.winfo_rooty()
+            rw = self.widget.winfo_width()
+            rh = self.widget.winfo_height()
+            
+            if rx <= px <= rx + rw and ry <= py <= ry + rh:
+                self._check_id = self.widget.after(100, self.check_hover)
+                return
+        except:
+            pass
+        self.hide()
+
     def hide(self, event=None):
-        if event and hasattr(event, "x_root") and hasattr(event, "y_root"):
-            try:
-                x, y = event.x_root, event.y_root
+        try:
+            if event and hasattr(event, "x_root") and hasattr(event, "y_root"):
+                px, py = event.x_root, event.y_root
                 rx = self.widget.winfo_rootx()
                 ry = self.widget.winfo_rooty()
                 rw = self.widget.winfo_width()
                 rh = self.widget.winfo_height()
-                if rx <= x <= rx + rw and ry <= y <= ry + rh:
+                if rx <= px <= rx + rw and ry <= py <= ry + rh:
                     return
-            except:
-                pass
+        except:
+            pass
+
         self.unschedule()
         if self.tip_window:
             try:

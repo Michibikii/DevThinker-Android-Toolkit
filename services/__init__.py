@@ -6,3 +6,4 @@ from .package_service import PackageService
 from .live_log_service import LiveLogService
 from .analyzer_service import AnalyzerService
 from .terminal_service import TerminalService
+from .hardware_service import HardwareService, HardwareInfoSnapshot
